@@ -27,18 +27,51 @@ conda activate vision_agent
 ```
 
 ## Creating a GS Dataset
-
 ### Camera Settings
 
-TODO: Provide camera setup instructions.
+To ensure high-quality image captures for accurate 3D reconstruction, follow these camera settings:
+
+1. **Shutter Speed**: Set the shutter speed to at least 1/125s to avoid motion blur. This is crucial for maintaining clear images, particularly when capturing in dynamic environments.
+2. **ISO & Aperture**: Adjust the ISO and aperture to avoid underexposure, especially in indoor settings. A larger aperture (lower f-number) allows more light, while a higher ISO setting compensates for the darker environment.
+3. **Camera Type**: We used a GoPro camera with a wide 16 mm lens, set to auto-focus. 
+4. **Video Settings**: We record in 4K resolution at 60 fps to maximize the number of keyframes extracted from the footage.
+
 
 ### Capture Tips
 
-TODO: Include tips for capturing images.
+1. **Camera Motion**: Induce maximum parallax by moving around the objects you want to capture. This enhances depth information in the scene, which is critical for accurate 3D reconstruction.
+2. **Capture Duration**: Capture a video for at least 5 minutes for each scene, ensuring extensive coverage of the environment.
+3. **File Compression**: Due to video compression, interframes (interpolated frames) are included. Extract keyframes using FFMPEG to ensure the highest-quality images are used for reconstruction.
+4. **Manual Check**: After extracting the keyframes, manually review and remove any images with excessive motion blur. This typically results in about 500 usable images per scene.
+5. **Image Coverage**: Ensure that the images cover the scene extensively from different angles and viewpoints. The more diverse the captures, the better the resulting mesh and point cloud will be.
 
+Make sure to also capture at least 3 images at known relative positions. They will allow to perform geo-registration in COLMAP afterwards, to align the z-axis with gravity and scale your frame of reference correctly. You can use a room corner or a table to do so.
 ### COLMAP
 
-Instructions for using COLMAP.
+With your images in hand, we can use COLMAP to infer the camera poses and intrinsics.
+```bash
+cd third_party/2d_gaussian_splatting
+python convert.py -s <path to your images folder>
+```
+
+Now you can perform geo-registration on your dataset.
+First, create a text file like so : 
+
+image_name1.jpg X1 Y1 Z1
+image_name2.jpg X2 Y2 Z2
+image_name3.jpg X3 Y3 Z3
+...
+
+Then :
+```bash
+colmap model_aligner \
+    --input_path /path/to/model \
+    --output_path /path/to/geo-registered-model \
+    --ref_images_path /path/to/text-file \
+    --ref_is_gps 0 \
+    --alignment_type custom \
+    --alignment_max_error 3.0
+```
 
 ## Getting the Vision and Collision Mesh
 
