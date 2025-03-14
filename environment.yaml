@@ -1,0 +1,31 @@
+name: vision_agent
+channels:
+    - nvidia
+    - conda-forge
+    - defaults
+dependencies:
+    - cuda
+    - gin-config >=0.5.0
+    - gymnasium >=0.28.1
+    - jupyter
+    - ninja
+    - panda3d
+    - pinocchio
+    - pip
+    - python >=3.8,<3.12
+    - stable-baselines3 >=2.1.0
+    - tensorboard
+    - timm
+    - tqdm
+    - tyro >=0.8.11
+    - torchvision
+    - upkie >=5.1.0
+    - pip :
+        - mediapy
+        - moviepy
+        - open3d
+        - opencv-python
+        - panda3d_viewer
+        - plyfile
+        - scikit-image
+        - trimesh
