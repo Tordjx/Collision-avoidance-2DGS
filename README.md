@@ -93,6 +93,8 @@ python autoencoder.py
 
 This script will also visualize the image, depth reconstruction, and depth ground truth at the end of training. Use the `--skip_train` argument to skip training and only view the visualizations. You can also adjust the batch size and number of epochs with the `--batch_size` and `--epochs` parameters.
 
+![Depth reconstruction](Vision training.png)
+
 ### Train Your Navigation Policy
 
 Now, you’re ready to train your navigation policy:
@@ -131,7 +133,7 @@ cd upkie
 python run.py
 ```
 
-This will open a window to visualize the FPV of the robot.
+This will open a window to visualize the FPV of the robot. With a joystick connected, your policy will correct your joystick inputs to avoid collisions.
 
 ### On Your Real Upkie
 
