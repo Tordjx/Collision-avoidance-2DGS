@@ -1,131 +1,149 @@
-## How to reproduce the results ?
 
-Create the conda environment
-Creating a GS dataset
-Using 2DGS
-Getting the collision mesh
-Train your navigation policy
-TODO : make a nice env file to make it work nice and quick
+# Collision avoidance from monocular visiontrained with novel view synthesis
+
 ## Installation
 
-First clone the repository recursively 
+### Clone the Repository
+
+First, clone the repository recursively to ensure all submodules are included:
+
+```bash
 git clone ... --recursive
+```
 
-### Conda environment
+### Conda Environment
 
-Add the following line ([source](https://github.com/pytorch/audio/pull/3811/files)) to `third_party/2d-gaussian-splatting/submodules/simple-knn/simple_knn.cu`:
+Add the following line to `third_party/2d-gaussian-splatting/submodules/simple-knn/simple_knn.cu` (source: [PyTorch Audio PR #3811](https://github.com/pytorch/audio/pull/3811/files)):
 
 ```cpp
 #include <float.h>
 ```
 
-Create the `vision_agent` environment:
+Now, create the `vision_agent` conda environment:
 
-```console
+```bash
 conda env create -f environment.yaml
-
 conda activate vision_agent
 ```
 
+## Creating a GS Dataset
 
-## Creating a GS dataset
+### Camera Settings
 
-Camera settings
-Capture tips
-COLMAP
+TODO: Provide camera setup instructions.
 
-## Getting the vision and the collision mesh
+### Capture Tips
 
-Train the gaussian splatting model and render the mesh
+TODO: Include tips for capturing images.
 
-```console
+### COLMAP
+
+Instructions for using COLMAP.
+
+## Getting the Vision and Collision Mesh
+
+Train the Gaussian Splatting model and render the mesh:
+
+```bash
 cd third_party/2d_gaussian_splatting
-
-python train.py -s <path to COLMAP or NeRF Synthetic dataset> 
-
-python render.py -m <path to trained model> --skip-train --skip-test 
+python train.py -s <path to COLMAP or NeRF Synthetic dataset>
+python render.py -m <path to trained model> --skip-train --skip-test
 ```
-you might need to tweak --sdf_trunc or --depth_trunc if you find yourself with an incomplete mesh
 
-Next, decompose the mesh in convex subparts using this scrip
+If you encounter an incomplete mesh, you may need to adjust the `--sdf_trunc` or `--depth_trunc` parameters.
 
-```console
-python coacd.py --mesh <path to your mesh> 
+Next, decompose the mesh into convex subparts:
+
+```bash
+python coacd.py --mesh <path to your mesh>
 ```
-You may tweak --preprocess_resolution and --threshold parameters.
 
-Next, open this mesh in blender and remove the ground, and any artifacts that there might be
-Save and name your postprocessed mesh manual_postprocess.obj
+You may need to tweak the `--preprocess_resolution` and `--threshold` parameters.
 
-Finally, generate a urdf to be able to load it in pinocchio
+Afterwards, open the mesh in Blender, remove the ground and any artifacts, and save the processed mesh as `manual_postprocess.obj`.
 
-```console
+Finally, generate a URDF to load the mesh in Pinocchio:
+
+```bash
 cd third_party/obj2urdf
 python obj2urdf.py <path to the file.obj>
 ```
 
-Copy manual_postprocess.obj, manual_postprocess.urdf, and point_cloud.ply to the folder data.
-## Train and test your navigation policy 
+Copy `manual_postprocess.obj`, `manual_postprocess.urdf`, and `point_cloud.ply` to the `data` folder.
 
-# Collect the dataset to train the vision encoder
-Collect some RGB and depth image to learn the visual implicit representation
+## Train and Test Your Navigation Policy
 
-```console
-python make_dataset.py 
+### Collect the Dataset
+
+Collect some RGB and depth images to train the visual encoder:
+
+```bash
+python make_dataset.py
 ```
 
-The default length of the dataset is 60000, but you may adjust it using the --len_dataset parameter.
+By default, the dataset will have 60,000 samples, but you can adjust this with the `--len_dataset` parameter.
 
-You may now train the visual encoder.
-```console
-python autoencoder.py 
+### Train the Vision Encoder
+
+Train the vision encoder:
+
+```bash
+python autoencoder.py
 ```
-This script will also generate a vizualization of the image, depth reconstruction, and depth ground truth at the end of the training.
-You may skip the training to only get the vizualization using the --skip_train argument.
-You may also use the --batch_size and --epochs parameters.
 
-You are now ready to train your navigation policy.
+This script will also visualize the image, depth reconstruction, and depth ground truth at the end of training. Use the `--skip_train` argument to skip training and only view the visualizations. You can also adjust the batch size and number of epochs with the `--batch_size` and `--epochs` parameters.
 
-```console
-python train_policy.py 
+### Train Your Navigation Policy
 
+Now, you’re ready to train your navigation policy:
+
+```bash
+python train_policy.py
 ```
-You may adjust the number of training steps with the --training_steps parameter.
 
-You can try out your navigation policy.
-```console
+You can adjust the number of training steps with the `--training_steps` parameter.
 
+### Test Your Navigation Policy
+
+To test the navigation policy:
+
+```bash
 python test_nav_policy.py
 ```
-This script will open a window for you to see your agent behave when told to go full throttle forward.
 
-### Trying it out on Upkie !
+This will open a window showing the agent’s behavior when instructed to go full throttle forward.
 
-You are now ready to test your navigation policy in a simulator and/or on your real Upkie.
-# In sim
+## Trying It Out on Upkie!
 
-In one terminal 
-```console
+### In Simulation
+
+1. In one terminal, start the Upkie simulation:
+
+```bash
 git clone https://github.com/upkie/upkie.git
 cd upkie
 ./start_simulation.sh
 ```
-In another terminal
-```console
-python run.py 
+
+2. In another terminal, run the agent:
+
+```bash
+python run.py
 ```
-Note that this script will also open a window for you to visualize the FPV of the robot.
 
-# On your real Upkie
+This will open a window to visualize the FPV of the robot.
 
-In one terminal :
-```console 
+### On Your Real Upkie
+
+1. In one terminal, reset the Upkie system:
+
+```bash
 upkie_tool rezero
 make run_pi3hat_spine
 ```
 
-In another :
-```console
+2. In another terminal, run the agent:
+
+```bash
 python run.py
 ```
-
