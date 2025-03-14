@@ -57,10 +57,12 @@ python convert.py -s <path to your images folder>
 Now you can perform geo-registration on your dataset.
 First, create a text file like so : 
 
+```
 image_name1.jpg X1 Y1 Z1
 image_name2.jpg X2 Y2 Z2
 image_name3.jpg X3 Y3 Z3
 ...
+```
 
 Then :
 ```bash
