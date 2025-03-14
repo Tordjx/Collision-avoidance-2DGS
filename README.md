@@ -1,5 +1,5 @@
 
-# Collision avoidance from monocular visiontrained with novel view synthesis
+# Collision avoidance from monocular vision trained with novel view synthesis
 
 ## Installation
 
