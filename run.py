@@ -7,11 +7,10 @@ upkie.envs.register()
 import gin
 
 gin.parse_config_file(f"config/settings.gin")
-from config.settings import EnvSettings, TrainingSettings
+from config.settings import EnvSettings
 
 # from robot_state_randomization import RobotStateRandomization
 env_settings = EnvSettings()
-training_settings = TrainingSettings()
 from env.envs import make_vision_pink_env
 
 gym.envs.registration.register(
@@ -23,7 +22,6 @@ def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         agent_frequency = env_settings.agent_frequency
         max_episode_duration = 25000
-        TrainingSettings()
 
         velocity_env = gym.make(
             env_settings.env_id,

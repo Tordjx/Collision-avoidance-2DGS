@@ -113,10 +113,9 @@ if __name__ == "__main__":
             losses = 0
             for i, data in enumerate(dataloader):
                 x, y = data
-                print(x.shape, y.shape)
                 # print(y)
                 x = x.to(device)
-                y = torch.log(y).to(device).unsqueeze(1)
+                y = torch.log(y).to(device)
                 optimizer.zero_grad()
                 outputs = autoencoder(noiser(x))
                 loss = criterion(outputs, y)

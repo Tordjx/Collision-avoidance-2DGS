@@ -1,31 +1,38 @@
 name: vision_agent
 channels:
-    - nvidia
     - conda-forge
+    - nvidia
     - defaults
 dependencies:
-    - cuda
+    - cuda-nvcc
     - gin-config >=0.5.0
     - gymnasium >=0.28.1
     - jupyter
     - ninja
-    - panda3d
-    - pinocchio
     - pip
     - python >=3.8,<3.12
-    - stable-baselines3 >=2.1.0
-    - tensorboard
-    - timm
     - tqdm
-    - tyro >=0.8.11
-    - torchvision
-    - upkie >=5.1.0
+    - meshcat-shapes >=0.3.0
+    - pink >=3.0.0,<4
+    - pinocchio >=3.1.0,<4
+    - qpmpc >=3.0.1,<4
+    - qpsolvers >=4.2.0,<5
+    - upkie >=6,<7
     - pip :
+        - torch
+        - torchvision
+        - torchaudio
         - mediapy
         - moviepy
         - open3d
         - opencv-python
-        - panda3d_viewer
         - plyfile
         - scikit-image
         - trimesh
+        - sb3-contrib
+        - tensorboard
+        - stable-baselines3[extra]
+    - pip : 
+        - third_party/2d-gaussian-splatting/submodules/diff-surfel-rasterization
+        - third_party/2d-gaussian-splatting/submodules/simple-knn
+        - third_party/pink_balancer

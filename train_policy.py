@@ -34,7 +34,7 @@ if __name__ == "__main__":
         "--eval_every", type=int, default=10000, help="Evaluate model every n steps"
     )
     parser.add_argument(
-        "--training_steps", type=int, default=500000, help="Number of training steps"
+        "--training_steps", type=int, default=100000, help="Number of training steps"
     )
     args = parser.parse_args()
     env = NavigationEnv(window=False)

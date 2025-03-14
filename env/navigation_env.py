@@ -205,7 +205,7 @@ class NavigationEnv(gym.Env):
             self.joystick = self.sample_joystick()
         observation = self.get_obs()
         info = {}
-        return observation, reward, bool(done), bool(trunc), info
+        return observation, float(reward), bool(done), bool(trunc), info
 
     def get_obs(self):
         features = np.concatenate(np.array(self.features_memory), -1).flatten()

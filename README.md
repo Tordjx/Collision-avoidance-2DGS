@@ -8,71 +8,26 @@ Train your navigation policy
 TODO : make a nice env file to make it work nice and quick
 ## Installation
 
+First clone the repository recursively 
+git clone ... --recursive
+
 ### Conda environment
-
-Create the `vision_agent` environment:
-
-```console
-conda env create -f environment.yaml
-```
-
-Pay attention to the version of PyTorch resolved when the environment is created. It should contain a version of CUDA:
-
-```diff
-- bad
--   + pytorch                       2.4.1  cpu_mkl_py311hb499fb8_100  conda-forge       36MB
-+ good
-+   + pytorch                       2.4.1  cuda118_py313h49748f1_302  conda-forge       26MB
-```
-
-Activate the fresh environment:
-
-```console
-conda activate vision_agent
-```
-
-### Install 2D Gaussian splatting
-
-Install the 2DGS rasterizer:
-
-```consoleUsing 2DGS
-
-```console
-pip install ./third_party/2d-gaussian-splatting/submodules/simple-knn
-```
-
-Check out troubleshooting below if you get an error.
-
-Finally, apply the following patch to the Gaussian renderer in `third_party/2d-gaussian-splatting`:
-
-```diff
---- a/gaussian_renderer/__init__.py
-+++ b/gaussian_renderer/__init__.py
-@@ -75,8 +75,9 @@ def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor,
-         cov3D_precomp = (splat2world[:, [0,1,3]] @ world2pix[:,[0,1,3]]).permute(0,2,1).reshape(-1, 9) # column major
-     else:
-         scales = pc.get_scaling
-+        scales = scales[:, :2]
-         rotations = pc.get_rotation
-```
-
-## Troubleshooting
-
-### Error: namespace "std" has no member "uintptr\_t"
-
-Add the following line to `third_party/2d-gaussian-splatting/submodules/diff-surfel-rasterization/cuda_rasterizer/rasterizer_impl.h`:
-
-```cpp
-#include <cstdint>
-```
-
-### Error: undefined FLT\_MAX constant
 
 Add the following line ([source](https://github.com/pytorch/audio/pull/3811/files)) to `third_party/2d-gaussian-splatting/submodules/simple-knn/simple_knn.cu`:
 
 ```cpp
 #include <float.h>
 ```
+
+Create the `vision_agent` environment:
+
+```console
+conda env create -f environment.yaml
+
+conda activate vision_agent
+```
+
+
 ## Creating a GS dataset
 
 Camera settings
@@ -81,44 +36,96 @@ COLMAP
 
 ## Getting the vision and the collision mesh
 
-python train.py -s bidule
+Train the gaussian splatting model and render the mesh
 
-python render.py -m truc --skip-train --skip-test 
+```console
+cd third_party/2d_gaussian_splatting
 
-you might need to tweak sdf trunc (verifier) if you find yourself with an incomplete mesh
+python train.py -s <path to COLMAP or NeRF Synthetic dataset> 
 
-python coacd.py --mesh meshpath --relevant_coacd_params truc
+python render.py -m <path to trained model> --skip-train --skip-test 
+```
+you might need to tweak --sdf_trunc or --depth_trunc if you find yourself with an incomplete mesh
 
-expliquer les deux parametres importatnts de coacd
+Next, decompose the mesh in convex subparts using this scrip
 
-blender
+```console
+python coacd.py --mesh <path to your mesh> 
+```
+You may tweak --preprocess_resolution and --threshold parameters.
 
+Next, open this mesh in blender and remove the ground, and any artifacts that there might be
+Save and name your postprocessed mesh manual_postprocess.obj
+
+Finally, generate a urdf to be able to load it in pinocchio
+
+```console
+cd third_party/obj2urdf
+python obj2urdf.py <path to the file.obj>
+```
+
+Copy manual_postprocess.obj, manual_postprocess.urdf, and point_cloud.ply to the folder data.
 ## Train and test your navigation policy 
 
 # Collect the dataset to train the vision encoder
-python make_dataset.py --len_dataset N 
-the default is 60000
-# Train the vision encoder
-python train_encoder.py --batch_size 256 --epochs 10000
+Collect some RGB and depth image to learn the visual implicit representation
 
+```console
+python make_dataset.py 
+```
+
+The default length of the dataset is 60000, but you may adjust it using the --len_dataset parameter.
+
+You may now train the visual encoder.
+```console
+python autoencoder.py 
+```
+This script will also generate a vizualization of the image, depth reconstruction, and depth ground truth at the end of the training.
+You may skip the training to only get the vizualization using the --skip_train argument.
+You may also use the --batch_size and --epochs parameters.
+
+You are now ready to train your navigation policy.
+
+```console
 python train_policy.py 
 
-python test_nav_policy.py to vizualize in the pure navigation env
+```
+You may adjust the number of training steps with the --training_steps parameter.
+
+You can try out your navigation policy.
+```console
+
+python test_nav_policy.py
+```
+This script will open a window for you to see your agent behave when told to go full throttle forward.
 
 ### Trying it out on Upkie !
 
+You are now ready to test your navigation policy in a simulator and/or on your real Upkie.
 # In sim
 
-in upkie
+In one terminal 
+```console
+git clone https://github.com/upkie/upkie.git
+cd upkie
 ./start_simulation.sh
-
-in another terminal
+```
+In another terminal
+```console
 python run.py 
+```
+Note that this script will also open a window for you to visualize the FPV of the robot.
 
 # On your real Upkie
 
+In one terminal :
+```console 
 upkie_tool rezero
-
 make run_pi3hat_spine
+```
 
+In another :
+```console
 python run.py
+```
+

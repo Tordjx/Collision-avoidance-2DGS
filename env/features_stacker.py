@@ -13,8 +13,7 @@ class FeaturesStackerWrapper(gym.Wrapper):
     def __init__(self, env, env_settings, feature_size=32):
         super().__init__(env)
         self.env_settings = env_settings
-        self.features_to_stack = env_settings.history_size // env_settings.image_every
-        n = feature_size * self.features_to_stack
+        n = feature_size
         low = np.concatenate([env.observation_space.low, -10 * np.ones(n)])
         self.observation_space = gym.spaces.Box(
             low=low,
@@ -23,7 +22,7 @@ class FeaturesStackerWrapper(gym.Wrapper):
             dtype=env.observation_space.dtype,
         )
         self.features_count = 0
-        self.features_memory = deque(maxlen=self.features_to_stack)
+        self.features_memory = deque(maxlen=1)
         self.encoder = AutoEncoder(
             input_shape=(3, env_settings.height, env_settings.width),
             z_size=feature_size,
@@ -35,15 +34,14 @@ class FeaturesStackerWrapper(gym.Wrapper):
         self.features_count = 0
         s, i = self.env.reset(**kwargs)
         # Initialize memory to full of the first features
-        for _ in range(self.features_to_stack):
-            with torch.no_grad():
-                self.features_memory.append(
-                    self.encoder.encode(
-                        torch.from_numpy(i["image"].copy()).to(device).to(torch.float32)
-                    )
-                    .cpu()
-                    .numpy()
+        with torch.no_grad():
+            self.features_memory.append(
+                self.encoder.encode(
+                    torch.from_numpy(i["image"].copy()).to(device).to(torch.float32)
                 )
+                .cpu()
+                .numpy()
+            )
         self.featuress = np.concatenate(self.features_memory).reshape(-1)
         s = np.concatenate((s, self.featuress))
         return s, i

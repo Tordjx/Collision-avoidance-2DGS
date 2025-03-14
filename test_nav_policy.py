@@ -14,15 +14,13 @@ from sb3_contrib import CrossQ
 
 from env.navigation_env import NavigationEnv
 
-envs = SyncVectorEnv(
-    [NavigationEnv(window=True, eval=True, max_duration=args.max_episode_duration)]
-)
+envs = NavigationEnv(window=True, eval=True, max_duration=args.max_episode_duration)
 model = CrossQ.load("CrossQ_navigation", env=envs)
 
 for i in range(args.number_episodes):
     d = False
     t = False
     obs, infos = envs.reset()
-    while not d or t:
+    while not (d or t):
         action, _ = model.predict(obs, deterministic=True)
         obs, r, d, t, infos = envs.step(action)

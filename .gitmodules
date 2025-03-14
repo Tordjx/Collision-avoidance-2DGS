@@ -1,3 +1,9 @@
 [submodule "third_party/2d-gaussian-splatting"]
 	path = third_party/2d-gaussian-splatting
 	url = https://github.com/Tordjx/2d-gaussian-splatting.git
+[submodule "third_party/pink_balancer"]
+	path = third_party/pink_balancer
+	url = https://github.com/upkie/pink_balancer.git
+[submodule "third_party/obj2urdf"]
+	path = third_party/obj2urdf
+	url = https://github.com/alaflaquiere/obj2urdf
