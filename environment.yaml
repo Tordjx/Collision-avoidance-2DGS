@@ -7,32 +7,37 @@ dependencies:
     - cuda-nvcc
     - gin-config >=0.5.0
     - gymnasium >=0.28.1
+    - jsonargparse
     - jupyter
-    - ninja
-    - pip
-    - python >=3.8,<3.12
-    - tqdm
     - meshcat-shapes >=0.3.0
+    - ninja
     - pink >=3.0.0,<4
     - pinocchio >=3.1.0,<4
+    - pip
     - qpmpc >=3.0.1,<4
     - qpsolvers >=4.2.0,<5
+    - tqdm
     - upkie >=6,<7
-    - pip :
-        - torch
-        - torchvision
-        - torchaudio
+    - wandb
+    - pip:
+        - lightning[pytorch-extra]
         - mediapy
         - moviepy
         - open3d
         - opencv-python
         - plyfile
-        - scikit-image
-        - trimesh
+        - pytorch-lightning
         - sb3-contrib
-        - tensorboard
+        - scikit-image
+        - splines==0.3.0
         - stable-baselines3[extra]
-    - pip : 
+        - tensorboard
         - third_party/2d-gaussian-splatting/submodules/diff-surfel-rasterization
         - third_party/2d-gaussian-splatting/submodules/simple-knn
+        - third_party/diff-gaussian-rasterization
         - third_party/pink_balancer
+        - torch
+        - torchaudio
+        - torchvision
+        - trimesh
+        - viser
