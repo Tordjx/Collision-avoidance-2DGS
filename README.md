@@ -19,6 +19,12 @@ Add the following line to `third_party/2d-gaussian-splatting/submodules/simple-k
 #include <float.h>
 ```
 
+Apply a similar patch to `third_party/diff-gaussian-rasterization/cuda_rasterizer/rasterizer_impl.h:
+
+```cpp
+#include <cstdint>
+```
+
 Now, create the `vision_agent` conda environment:
 
 ```bash
@@ -33,7 +39,7 @@ To ensure high-quality image captures for accurate 3D reconstruction, follow the
 
 1. **Shutter Speed**: Set the shutter speed to at least 1/125s to avoid motion blur. This is crucial for maintaining clear images, particularly when capturing in dynamic environments.
 2. **ISO & Aperture**: Adjust the ISO and aperture to avoid underexposure, especially in indoor settings. A larger aperture (lower f-number) allows more light, while a higher ISO setting compensates for the darker environment.
-3. **Camera Type**: We used a GoPro camera with a wide 16 mm lens, set to auto-focus. 
+3. **Camera Type**: We used a GoPro camera with a wide 16 mm lens, set to auto-focus.
 4. **Video Settings**: We record in 4K resolution at 60 fps to maximize the number of keyframes extracted from the footage.
 
 
@@ -55,7 +61,7 @@ python convert.py -s <path to your images folder>
 ```
 
 Now you can perform geo-registration on your dataset.
-First, create a text file like so : 
+First, create a text file `geo-registration.txt` like so:
 
 ```
 image_name1.jpg X1 Y1 Z1
@@ -64,23 +70,24 @@ image_name3.jpg X3 Y3 Z3
 ...
 ```
 
-Then :
+Then:
 ```bash
 colmap model_aligner \
-    --input_path /path/to/model \
-    --output_path /path/to/geo-registered-model \
-    --ref_images_path /path/to/text-file \
+    --input_path ./sparse/0 \
+    --output_path ./name_of_output_directory \
+    --ref_images_path ./geo-registration.txt \
     --ref_is_gps 0 \
     --alignment_type custom \
     --alignment_max_error 3.0
 ```
+where `sparse/0` is the path to your model directory. In the ideal case, there will be a single `distorted/sparse/0` directory and a single `sparse/0` output directory, in which case your model path is the latter. If there are several directories in `distorted/sparse`, pick the largest one and rename it to `0`, then re-run `python convert.py -s your/scene/path --skip_matching` to produce a new `sparse/0` output directory.
 
 ## Getting the Vision and Collision Mesh
 
 Train the Gaussian Splatting model and render the mesh:
 
 ```bash
-cd third_party/2d_gaussian_splatting
+cd third_party/gaussian-splatting-lightning
 python train.py -s <path to COLMAP or NeRF Synthetic dataset>
 python render.py -m <path to trained model> --skip-train --skip-test
 ```
