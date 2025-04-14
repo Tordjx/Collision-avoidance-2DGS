@@ -87,7 +87,7 @@ where `sparse/0` is the path to your model directory. In the ideal case, there w
 Train the Gaussian Splatting model and render the mesh:
 
 ```bash
-cd third_party/gaussian-splatting-lightning
+cd third_party/2d_gaussian_splatting
 python train.py -s <path to COLMAP or NeRF Synthetic dataset>
 python render.py -m <path to trained model> --skip-train --skip-test
 ```
