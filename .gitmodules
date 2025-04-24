@@ -7,3 +7,6 @@
 [submodule "third_party/obj2urdf"]
 	path = third_party/obj2urdf
 	url = https://github.com/alaflaquiere/obj2urdf
+[submodule "third_party/diff-gaussian-rasterization"]
+	path = third_party/diff-gaussian-rasterization
+	url = https://github.com/yzslab/diff-gaussian-rasterization.git
