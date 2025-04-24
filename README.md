@@ -1,6 +1,6 @@
 
 # Collision avoidance from monocular vision trained with novel view synthesis
-
+This repository contains the code for the working paper Collision avoidance from monocular vision trained with novel view synthesis, available on HAL https://hal.science/hal-05005146.
 ## Installation
 
 ### Clone the Repository
