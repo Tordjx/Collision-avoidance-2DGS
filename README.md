@@ -166,6 +166,7 @@ This will open a window showing the agent’s behavior when instructed to go ful
 ```bash
 git clone https://github.com/upkie/upkie.git
 cd upkie
+git checkout 541b8ed686508c159a643f8c22316627a96f71ef
 ./start_simulation.sh
 ```
 
