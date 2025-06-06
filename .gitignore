@@ -1,0 +1,14 @@
+CrossQ_nav_tensorboard/
+CrossQ_navigation.zip
+Vision\ training.png
+__pycache__
+autoencoder.pth
+data/manual_postprocess.obj
+data/manual_postprocess.urdf
+data/manual_postprocess_ground.obj
+data/manual_postprocess_ground.urdf
+data/manual_postprocess_no_ground.mtl
+data/point_cloud.ply
+depths.pt
+images.pt
+position_history.npy
