@@ -8,7 +8,7 @@ This repository contains the code for the working paper Collision avoidance from
 First, clone the repository recursively to ensure all submodules are included:
 
 ```bash
-git clone ... --recursive
+git clone https://github.com/Tordjx/Collision-avoidance-2DGS.git --recursive
 ```
 
 ### Conda Environment
