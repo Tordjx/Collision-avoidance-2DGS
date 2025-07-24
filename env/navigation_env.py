@@ -345,4 +345,4 @@ class NavigationEnv(gym.Env):
 
     def compute_done(self):
         distance = self.compute_distance()
-        return distance < 0.02
+        return distance < 0.1
