@@ -115,7 +115,7 @@ if __name__ == "__main__":
                 x, y = data
                 # print(y)
                 x = x.to(device)
-                y = torch.log(y).to(device)
+                y = torch.log(y+1e-4).to(device)
                 optimizer.zero_grad()
                 outputs = autoencoder(noiser(x))
                 loss = criterion(outputs, y)
