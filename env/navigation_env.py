@@ -179,12 +179,22 @@ class NavigationEnv(gym.Env):
         )
         self.velocity[0] = np.clip(self.velocity[0], -1.5, 1.5)
         self.velocity[1] = np.clip(self.velocity[1], -1, 1)  # angular velocity !
+        se2 = pin.liegroups.SE2()
+        pose = np.array([self.position[0],self.position[1], np.cos(self.position[2]), np.sin(self.position[2])])
+        twist = np.array([self.velocity[0], 0 , self.velocity[1]])
+        new_pose = se2.integrate(pose, twist * self.dt)
+        self.position[0] = new_pose[0]
+        self.position[1] = new_pose[1]
+        self.position[2] = np.arctan2(new_pose[3], new_pose[2])
+        """
         velocity_cartesian = self.velocity[0] * np.array(
             [np.cos(self.position[2]), np.sin(self.position[2])]
         )
         self.position[0] += velocity_cartesian[0] * self.dt
         self.position[1] += velocity_cartesian[1] * self.dt
         self.position[2] += self.velocity[1] * self.dt  # Yaw update
+        """
+
         image = self.query_image()
         with torch.no_grad():
             image = (
