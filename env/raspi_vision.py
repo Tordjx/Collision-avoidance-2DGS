@@ -26,7 +26,7 @@ def create_pipeline():
 
     # Configure resizing settings
     manip.initialConfig.setResize(env_settings.height, env_settings.width)
-    manip.setKeepAspectRatio(False)
+    manip.setKeepAspectRatio(True)
 
     # Link camera preview output to ImageManip input
     cam_rgb.preview.link(manip.inputImage)
