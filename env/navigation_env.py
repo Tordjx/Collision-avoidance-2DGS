@@ -158,6 +158,8 @@ class NavigationEnv(gym.Env):
         # Position history
         self.total_timesteps = 0
         self.position_history = []
+        self.d_interaction = 0.75
+        self.d_margin = 0.1
 
     def step(self, action):
         x, y, theta = self.position
@@ -205,12 +207,26 @@ class NavigationEnv(gym.Env):
             self.features_memory.append(self.encoder.encode(image).cpu().numpy())
         self.timestep += 1
         trunc = self.timestep >= self.max_duration
-        done = self.compute_done()
-        if done:
-            reward = -100
-        else:
-            reward = 1 - np.sum(abs(action))  # self.reward()
+        distance = self.compute_distance()
+        done = self.compute_done(distance)
+        w_corr = 0.5
+        w_obs = 0.5
+        r_corr = -w_corr * np.sqrt((action**2).sum())
+        death_penalty = 100
+        r_obs = -death_penalty if done else -w_obs *1/(distance-self.d_margin + 1/death_penalty)
+        reward =r_corr +  r_obs
 
+        '''
+        distance_penalty = 0 if distance > self.d_interaction else (self.d_interaction-distance)/(self.d_interaction-self.d_margin)
+        death_penalty = -500
+        distance_penalty = death_penalty * distance_penalty
+        done = self.compute_done(distance)
+        if done:
+            reward = death_penalty
+        else:
+            #big penalty for rdot correction, smaller for phidot correction, best if no correction
+            reward = 1-10*abs(action[0])- abs(action[1]) + distance_penalty
+        '''
         if np.random.binomial(1, 1 / (10 / self.dt)):
             self.joystick = self.sample_joystick()
         observation = self.get_obs()
@@ -353,6 +369,6 @@ class NavigationEnv(gym.Env):
         distance = np.min([x.min_distance for x in geom_data.distanceResults])
         return distance
 
-    def compute_done(self):
-        distance = self.compute_distance()
-        return distance < 0.1
+    def compute_done(self,distance):
+        
+        return distance < self.d_margin
