@@ -125,3 +125,34 @@ class MinimalDepthEnv:
             median_depths.append(float(median_val))
 
         return median_depths, pixel_row, cols
+    def get_ray_points_local_frame(self, position, quaternion):
+        """
+        Return 3D points (in meters) in the robot's local frame (x forward, y left, z up)
+        corresponding to rays across the rendered depth image.
+        """
+        depth = self.render_depth(position, quaternion)
+        median_depths, pixel_row, cols = self.get_rays(position, quaternion)
+
+        # Intrinsics
+        fx = self.width / (2 * np.tan(self.fovx / 2))
+        fy = self.height / (2 * np.tan(self.fovy / 2))
+        cx = self.width / 2
+        cy = self.height / 2
+
+        points = []
+        for u, depth_val in zip(cols, median_depths):
+            v = pixel_row
+
+            # From image coordinates (u, v) + depth to camera coordinates (OpenCV: z forward)
+            z_cam = depth_val
+            x_cam = (u - cx) * z_cam / fx
+            y_cam = (v - cy) * z_cam / fy
+
+            # Convert to robot frame: x forward, y left, z up
+            x_robot = z_cam
+            y_robot = -x_cam
+            z_robot = -y_cam
+
+            points.append(np.array([x_robot, y_robot, z_robot]))
+
+        return np.array(points)

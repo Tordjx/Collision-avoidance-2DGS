@@ -114,3 +114,35 @@ class RaysRaspi:
                     break
 
         cv2.destroyAllWindows()
+    def get_ray_points_local_frame(self, theta, depthFrame):
+        """
+        Return 3D points in the robot's local frame.
+        Robot frame: x forward, y left, z up/down (camera frame assumed z forward, x right, y down)
+        """
+        median_depths, pixel_row, cols = self.get_rays(theta, depthFrame)
+
+        # Intrinsics
+        fovx = 69 * np.pi / 180
+        fovy = 54 * np.pi / 180
+        fx = self.frame_width / (2 * np.tan(fovx / 2))
+        fy = self.frame_height / (2 * np.tan(fovy / 2))
+        cx = self.frame_width / 2
+        cy = self.frame_height / 2
+
+        points = []
+        for u, depth in zip(cols, median_depths):
+            v = pixel_row
+
+            # Convert (u,v,depth) to camera coordinates (OpenCV: z forward, x right, y down)
+            z_cam = depth
+            x_cam = (u - cx) * z_cam / fx
+            y_cam = (v - cy) * z_cam / fy
+
+            # Convert camera to robot frame (robot x forward, y left, z up/down)
+            x_robot = z_cam
+            y_robot = -x_cam
+            z_robot = -y_cam
+
+            points.append(np.array([x_robot, y_robot, z_robot]))
+
+        return np.array(points)
