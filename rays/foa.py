@@ -64,3 +64,7 @@ class ReactiveAvoidance:
         )
 
         return modulated_velocity
+#TODO : the whole pipeline
+#the joystick gives the reference velocity
+#check if the velocity in foa is actually se2 twist but looks like so
+#reference velocity -> modulator -> pink balancer 
