@@ -209,12 +209,32 @@ class NavigationEnv(gym.Env):
         trunc = self.timestep >= self.max_duration
         distance = self.compute_distance()
         done = self.compute_done(distance)
-        w_corr = 0.5
-        w_obs = 0.5
+        if distance < self.d_margin : 
+            reward = -1
+        else : 
+            reward = 2- abs(action).sum()
+        """
+        w_corr = 10
+        w_obs = 1
         r_corr = -w_corr * np.sqrt((action**2).sum())
-        death_penalty = 100
-        r_obs = -death_penalty if done else -w_obs *1/(distance-self.d_margin + 1/death_penalty)
-        reward =r_corr +  r_obs
+        death_penalty = 1
+        if distance < self.d_margin:
+            # Collision — max penalty
+            r_obs = -death_penalty
+        elif distance > self.d_interaction:
+            # Far away — no penalty
+            r_obs = 0.0
+        else:
+            # Smooth exponential penalty between self.d_interaction and self.d_margin
+            # Map distance linearly from [self.d_interaction, self.d_margin] to [0,1]
+            alpha = (self.d_interaction - distance) / (self.d_interaction - self.d_margin)
+            # Penalty ramps from 0 to -death_penalty exponentially
+            r_obs = -death_penalty * (1 - np.exp(-5 * alpha))  # 5 controls sharpness; tune as needed
+        r_obs *= w_obs  # scale if needed
+        #print(r_obs, r_corr)
+        reward =r_corr +  r_obs + death_penalty
+        reward /= (death_penalty+2*w_corr)
+        reward +=1"""
 
         '''
         distance_penalty = 0 if distance > self.d_interaction else (self.d_interaction-distance)/(self.d_interaction-self.d_margin)
@@ -244,9 +264,9 @@ class NavigationEnv(gym.Env):
         self.robot_height = np.random.uniform(0.4, 0.6)
         self.tilt = 0
         self.position = self.sample_position()  # Reset (x, y, theta)
-        while self.compute_distance() < 0.5:
+        while self.compute_distance() < 0.2:
             self.position = self.sample_position()
-        self.velocity = np.zeros(2)  # Reset (linear velocity, yaw velocity)
+        self.velocity = np.random.uniform(-1,1,2)  # Reset (linear velocity, yaw velocity)
         self.timestep = 0
         self.joystick = self.sample_joystick()
         image = self.query_image()
@@ -371,4 +391,4 @@ class NavigationEnv(gym.Env):
 
     def compute_done(self,distance):
         
-        return distance < self.d_margin
+        return distance <= self.d_margin
