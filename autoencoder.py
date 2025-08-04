@@ -6,7 +6,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+def ScaleInvarientLoss(alpha = 10, lamb = 0.85):
+    def func(preds,target):
+        preds = torch.clamp(preds, 1e-3, 20)
+        target = torch.clamp(target, 1e-3, 20)
+        T = torch.tensor(preds.shape).prod().item()
+        g = torch.log(preds)- torch.log(target)
+        return alpha * torch.sqrt((g**2).sum()/T - lamb * (g.sum())**2 /(T**2))
 
+    return func
 class AutoEncoder(nn.Module):
     def __init__(self, input_shape, z_size):
         super(AutoEncoder, self).__init__()
@@ -115,7 +123,7 @@ if __name__ == "__main__":
                 x, y = data
                 # print(y)
                 x = x.to(device)
-                y = torch.log(y+1e-4).to(device)
+                y =torch.log(torch.clamp(y,1e-2, 10)).to(device)
                 optimizer.zero_grad()
                 outputs = autoencoder(noiser(x))
                 loss = criterion(outputs, y)
@@ -123,6 +131,7 @@ if __name__ == "__main__":
                 losses += loss.item()
                 optimizer.step()
             losses = losses / len(dataloader)
+            print(losses)
         torch.save(autoencoder.state_dict(), "autoencoder.pth")
     autoencoder.load_state_dict(torch.load("autoencoder.pth"))
     autoencoder.eval()
