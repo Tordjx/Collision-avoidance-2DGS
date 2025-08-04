@@ -349,13 +349,36 @@ class NavigationEnv(gym.Env):
                 .numpy()
             )
             self.depth = depth
+            
         if self.window:
+            # RGB image
             window_image = (255 * image).astype(np.uint8)
-            upscaled_image = cv2.resize(
-                window_image, (0, 0), fx=4, fy=4, interpolation=cv2.INTER_LINEAR
-            )
-            upscaled_image = cv2.cvtColor(upscaled_image, cv2.COLOR_RGB2BGR)
-            cv2.imshow(self.window_name, upscaled_image)
+            window_image = cv2.cvtColor(window_image, cv2.COLOR_RGB2BGR)
+
+            # Depth to uint8 colormap
+            def normalize_and_colorize(d):
+                d_norm = (d - np.min(d)) / (np.max(d) - np.min(d) + 1e-8)
+                d_uint8 = (255 * d_norm).astype(np.uint8)
+                return cv2.applyColorMap(d_uint8, cv2.COLORMAP_INFERNO)
+
+            # Depth GT
+            depth_colored = normalize_and_colorize(np.log(np.moveaxis(np.clip(depth,1e-2, 5), 0,-1)))
+
+            # Depth reconstruction from autoencoder
+            with torch.no_grad():
+                depth_recons = self.encoder(torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0).to(device))
+                depth_recons = depth_recons.squeeze().cpu().numpy()
+            depth_recons_colored = normalize_and_colorize(depth_recons)
+
+            # Resize all to same height
+            target_h = 256
+            window_image = cv2.resize(window_image, (target_h * window_image.shape[1] // window_image.shape[0], target_h))
+            depth_colored = cv2.resize(depth_colored, (window_image.shape[1], target_h))
+            depth_recons_colored = cv2.resize(depth_recons_colored, (window_image.shape[1], target_h))
+
+            # Concatenate
+            combined = np.hstack([window_image, depth_colored, depth_recons_colored])
+            cv2.imshow(self.window_name, combined)
             cv2.waitKey(1)
         return np.moveaxis(image, -1, 0)
 

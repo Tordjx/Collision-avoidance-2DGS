@@ -10,6 +10,7 @@ gin.parse_config_file(f"config/settings.gin")
 from config.settings import EnvSettings
 
 # from robot_state_randomization import RobotStateRandomization
+from upkie.utils.robot_state import RobotState
 env_settings = EnvSettings()
 from env.envs import make_vision_pink_env
 
@@ -32,6 +33,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
             # max_ground_velocity=env_settings.max_ground_velocity,
             spine_config=env_settings.spine_config,
             fall_pitch=np.pi / 2,
+            init_state = RobotState(position_base_in_world = np.array([2,2,0.6]))
             # no_imu = env_settings.no_imu
         )
         env = make_vision_pink_env(
@@ -58,10 +60,11 @@ from tqdm import tqdm
 model = CrossQ.load("CrossQ_navigation", env=envs)
 obs, infos = envs.reset()
 smooth_action = 0
+alpha= 0
 for i in tqdm(range(200000)):
 
     action, _ = model.predict(obs, deterministic=True)
-    smooth_action = action
+    smooth_action = alpha * smooth_action + (1 - alpha) * action
     obs, r, d, t, infos = envs.step(smooth_action)
     if infos["spine_observation"]["joystick"]["triangle_button"]:
         obs, infos = envs.reset()
