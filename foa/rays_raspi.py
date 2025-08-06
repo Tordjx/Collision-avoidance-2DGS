@@ -43,7 +43,7 @@ class RaysRaspi:
         # Stereo depth node
         stereo = self.pipeline.createStereoDepth()
         #stereo.setRectifyEdgeFillColor(10000)
-        stereo.setLeftRightCheck(True)
+        #stereo.setLeftRightCheck(True)
         #stereo.setExtendedDisparity(True)
         #stereo.setSubpixel(True)
 
@@ -55,11 +55,10 @@ class RaysRaspi:
         xoutDepth = self.pipeline.createXLinkOut()
         xoutDepth.setStreamName("depth")
         stereo.depth.link(xoutDepth.input)
-
+        self.device = dai.Device(self.pipeline)
         # Parameters for ray shooting
         self.N = N
         self.radius = 5 #pixels
-        print('init passed')
     def get_rays(self, theta, depthFrame):
         fovx = 69 * np.pi / 180
         fovy = 54 * np.pi / 180
@@ -141,15 +140,15 @@ class RaysRaspi:
         Return 3D points in the robot's local frame.
         Robot frame: x forward, y left, z up/down (camera frame assumed z forward, x right, y down)
         """
-        with dai.Device(self.pipeline) as device:
-            depthQueue = device.getOutputQueue(name="depth", maxSize=4, blocking=False)
+        
+        depthQueue = self.device.getOutputQueue(name="depth", maxSize=4, blocking=False)
 
-            inDepth = None 
-            while inDepth is None :
-                inDepth = depthQueue.tryGet()
-            depthFrame = inDepth.getFrame().astype(np.float32)
-            depthFrame = np.where(depthFrame == 0, 1e4, depthFrame)
-            depthFrame = np.clip(depthFrame, 0, 1e4)
+        inDepth = None 
+        while inDepth is None :
+            inDepth = depthQueue.tryGet()
+        depthFrame = inDepth.getFrame().astype(np.float32)
+        depthFrame = np.where(depthFrame == 0, 1e4, depthFrame)
+        depthFrame = np.clip(depthFrame, 0, 1e4)
         median_depths, pixel_row, cols = self.get_rays(theta, depthFrame)
 
         # Intrinsics
@@ -175,5 +174,4 @@ class RaysRaspi:
             z_robot = -y_cam
 
             points.append(np.array([x_robot, y_robot]))
-        
         return np.array(points).T

@@ -55,7 +55,6 @@ class ReactiveAvoidance:
 
         # Update avoider with obstacle points
         self.avoider.update_laserscan(obstacle_points, in_robot_frame=False)
-        print(reference_velocity)
         # Modulate the velocity
         modulated_velocity = self.avoider.avoid(
             reference_velocity,
