@@ -1,14 +1,15 @@
 import depthai as dai
 import gin
-import gymnasium as gym
-import numpy as np
 from gymnasium import Wrapper
-
-from config.settings import EnvSettings
+import torch
+from models.autoencoder import AutoEncoder
 
 gin.parse_config_file("config/settings.gin")
+from config.config import Config
 
-env_settings = EnvSettings()
+config = Config()
+
+from controller.camera_thread import CameraThread
 
 
 def create_pipeline():
@@ -25,7 +26,7 @@ def create_pipeline():
     manip = pipeline.createImageManip()
 
     # Configure resizing settings
-    manip.initialConfig.setResize(env_settings.height, env_settings.width)
+    manip.initialConfig.setResize(config.image_size, config.image_size)
     manip.setKeepAspectRatio(True)
 
     # Link camera preview output to ImageManip input
@@ -38,49 +39,32 @@ def create_pipeline():
     return dai.Device(pipeline)
 
 
-def get_image(device):
-    q_rgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
-    in_rgb = None
-    while in_rgb is None:
-        # Get RGB frames
-        in_rgb = q_rgb.tryGet()
-        # If we have a new RGB frame, process it
-        if in_rgb is not None:
-            frame = in_rgb.getCvFrame() / 255
-    return frame
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class RaspiImageWrapper(Wrapper):
     def __init__(self, env, image_every=1):
         super().__init__(env=env)
         self.device = create_pipeline()
-        self.image_every = image_every
-        self.image_count = 0
-        low = self.env.observation_space.low
-        self.observation_space = gym.spaces.Box(
-            low=low,
-            high=np.concatenate([env.observation_space.high]),
-            shape=low.shape,
-            dtype=env.observation_space.dtype,
+        self.autoencoder = AutoEncoder(
+            (3, config.image_size, config.image_size), config.n_features
+        ).to(device)
+        self.autoencoder.load_state_dict(
+            torch.load("autoencoder.pth", map_location=device)
         )
+        self.camera_thread = CameraThread(
+            camera=self.device, encoder=self.autoencoder, fps=config.fps
+        )
+        self.camera_thread.start()
 
     def step(self, action):
-
         s, r, d, t, i = self.env.step(action)
-        if self.image_count % self.image_every == 0:
-            image = get_image(self.device)
-            image = image[..., ::-1]
-            self.image = image
-        else:
-            image = self.image
-        i["image"] = np.moveaxis(image, -1, 0)
-        self.image_count += 1
+        self.features = self.camera_thread.get_latest()
+        i["features"] = self.features
         return s, r, d, t, i
 
     def reset(self, **kwargs):
         s, i = self.env.reset(**kwargs)
-        image = get_image(self.device)
-        self.image = image
-        i["image"] = np.moveaxis(image, -1, 0)
-        self.image_count = 0
+        self.features = self.camera_thread.get_latest()
+        i["features"] = self.features
         return s, i
