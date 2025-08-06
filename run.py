@@ -62,8 +62,10 @@ obs, infos = envs.reset()
 smooth_action = 0
 alpha= 0
 for i in tqdm(range(200000)):
-
-    action, _ = model.predict(obs, deterministic=True)
+    if infos['spine_observation']['joystick']['left_axis'][1] >= 0:
+        action = np.zeros(2)
+    else: 
+        action, _ = model.predict(obs, deterministic=True)
     smooth_action = alpha * smooth_action + (1 - alpha) * action
     obs, r, d, t, infos = envs.step(smooth_action)
     if infos["spine_observation"]["joystick"]["triangle_button"]:
