@@ -8,7 +8,7 @@ import gymnasium as gym
 class MinimalRobot2D:
     """Simple 2D robot with fixed LIDAR at origin and circular control radius."""
 
-    def __init__(self, control_radius=0.15, control_point=np.array([0.0, 0.0])):
+    def __init__(self, control_radius, control_point=np.array([0.0, 0.0])):
         self.pose = ObjectPose(position=np.zeros(2), orientation=0.0)
 
         self.control_radius = control_radius
@@ -31,7 +31,7 @@ class MinimalRobot2D:
         return self.rotation_matrix.T @ (points.T - self.pose.position[:, None])
 
 class ReactiveAvoidance:
-    def __init__(self, control_radius=0.4):
+    def __init__(self, control_radius):
         # Setup robot model
         self.robot = MinimalRobot2D()
         self.robot.control_radius = control_radius

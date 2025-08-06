@@ -25,13 +25,14 @@ gym.envs.registration.register(
 )
 
 
-reactive_avoidance = ReactiveAvoidance(control_radius=0.4)
+reactive_avoidance = ReactiveAvoidance(control_radius=0.15)
 def modulate_velocity(reactive_avoidance, i ):
     target_forward = -i["spine_observation"]["joystick"]["left_axis"][1]
     target_yaw = -i["spine_observation"]["joystick"]["left_axis"][0]
     reference_velocity = np.array([target_forward,target_yaw])
     obstacle_points = i["obstacle_points"]
     modulated_velocity = reactive_avoidance.compute(reference_velocity, obstacle_points)
+    modulated_velocity[1] *=-1
     correction = modulated_velocity - reference_velocity
     return correction
 
