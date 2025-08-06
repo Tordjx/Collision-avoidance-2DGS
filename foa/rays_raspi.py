@@ -7,29 +7,23 @@ class RaysRaspiWrapper(gym.Wrapper):
         super().__init__(env)
         self.rays_thread = RaysThread(fps=10)
         self.rays_thread.start()
-        self.image_every = image_every
-        self.image_count = 0
         self.obstacle_points = None
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
-        self.image_count = 0
         pitch = abs(info["spine_observation"]["base_orientation"]["pitch"])
         self.rays_thread.set_pitch(pitch)
         self.obstacle_points = self.rays_thread.get_latest()
-        info["obstacle_points"] = self.obstacle_points
+        info['obstacle_points'] = self.obstacle_points 
         return obs, info
 
     def step(self, action):
         obs, reward, done, truncated, info = self.env.step(action)
         pitch = abs(info["spine_observation"]["base_orientation"]["pitch"])
         self.rays_thread.set_pitch(pitch)
-
-        if self.image_count % self.image_every == 0:
-            self.obstacle_points = self.rays_thread.get_latest()
+        self.obstacle_points = self.rays_thread.get_latest()
 
         info["obstacle_points"] = self.obstacle_points
-        self.image_count += 1
         return obs, reward, done, truncated, info
 
     def close(self):

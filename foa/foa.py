@@ -39,7 +39,7 @@ class ReactiveAvoidance:
 
         # Avoider instance
         self.avoider = SampledClusterAvoider(control_radius=self.robot.control_radius)
-
+        self.modulated_velocity = np.zeros(2)
     def compute(self, reference_velocity, obstacle_points):
         """Returns modulated velocity given obstacle points and reference velocity.
         
@@ -56,9 +56,13 @@ class ReactiveAvoidance:
         # Update avoider with obstacle points
         self.avoider.update_laserscan(obstacle_points, in_robot_frame=False)
         # Modulate the velocity
-        modulated_velocity = self.avoider.avoid(
-            reference_velocity,
-            self.robot.pose.position
-        )
-
+        try :
+            modulated_velocity = self.avoider.avoid(
+                reference_velocity,
+                self.robot.pose.position
+            )
+            self.modulated_velocity = modulated_velocity
+        except :
+            modulated_velocity = self.modulated_velocity
+            print("Warning ! something bad happened, sending previous modulated velocity")
         return modulated_velocity

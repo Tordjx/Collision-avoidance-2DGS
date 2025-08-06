@@ -3,10 +3,11 @@ import gin
 import numpy as np
 import torch
 from loop_rate_limiters import RateLimiter
-gin.parse_config_file("config/config.gin")
-from config.config import Config
 
-config = Config()
+gin.parse_config_file("config/settings.gin")
+from config.settings import EnvSettings
+
+config = EnvSettings()
 
 
 def get_image(device):
@@ -50,10 +51,11 @@ class CameraThread:
         while self.running:
             # Get image from camera
             img = get_image(self.camera)
-            print(img.shape, "careful ! check if this is H W 3")
-            img = img[..., ::-1]
+            
+            
             # Encode image
-            encoded = self.encoder.encode(img)
+            with torch.no_grad():
+                encoded = self.encoder.encode(img).squeeze(0).numpy()
 
             # Store safely
             with self.lock:
