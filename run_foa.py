@@ -1,3 +1,6 @@
+from upkie.utils.raspi import configure_agent_process, on_raspi
+if on_raspi() : 
+    configure_agent_process()
 from tqdm import tqdm
 from foa.foa import ReactiveAvoidance
 import numpy as np

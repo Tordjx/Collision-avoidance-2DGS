@@ -1,3 +1,6 @@
+from upkie.utils.raspi import configure_agent_process, on_raspi
+if on_raspi() : 
+    configure_agent_process()
 import gymnasium as gym
 import numpy as np
 import torch
