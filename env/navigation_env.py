@@ -300,10 +300,7 @@ class NavigationEnv(gym.Env):
         if self.eval:
             return np.array([0, -1])
         else:
-            if np.random.choice([0, 1]):
-                return np.random.uniform(-1, 1, size=2)
-            else:
-                return np.random.choice([-1, 0, 1], size=2)
+            return np.array([np.random.uniform(-1,1), np.random.uniform(0,-1)])
 
     def query_image(self):
         posx, posy, theta = self.position
