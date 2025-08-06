@@ -33,7 +33,7 @@ class MinimalRobot2D:
 class ReactiveAvoidance:
     def __init__(self, control_radius):
         # Setup robot model
-        self.robot = MinimalRobot2D()
+        self.robot = MinimalRobot2D(control_radius = control_radius )
         self.robot.control_radius = control_radius
         self.robot.control_point = [0, 0]
 

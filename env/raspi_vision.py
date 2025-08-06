@@ -4,10 +4,10 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import Wrapper
 
-from Public_repo.config.settings import EnvSettings, TrainingSettings
+from config.settings import EnvSettings
 
-gin.parse_config_file("settings.gin")
-train_settings = TrainingSettings()
+gin.parse_config_file("config/settings.gin")
+
 env_settings = EnvSettings()
 
 

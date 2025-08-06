@@ -24,7 +24,7 @@ class RaysRaspiWrapper(gym.Wrapper) :
         self.image_count += 1
         return s,r,d,t,i
 class RaysRaspi:
-    def __init__(self, N = 100): 
+    def __init__(self, N = 20): 
         # Frame size
         self.frame_height = 480
         self.frame_width = 640
@@ -42,10 +42,10 @@ class RaysRaspi:
 
         # Stereo depth node
         stereo = self.pipeline.createStereoDepth()
-        stereo.setRectifyEdgeFillColor(10000)
+        #stereo.setRectifyEdgeFillColor(10000)
         stereo.setLeftRightCheck(True)
-        stereo.setExtendedDisparity(True)
-        stereo.setSubpixel(True)
+        #stereo.setExtendedDisparity(True)
+        #stereo.setSubpixel(True)
 
         # Link mono to stereo
         monoLeft.out.link(stereo.left)
@@ -59,7 +59,7 @@ class RaysRaspi:
         # Parameters for ray shooting
         self.N = N
         self.radius = 5 #pixels
-
+        print('init passed')
     def get_rays(self, theta, depthFrame):
         fovx = 69 * np.pi / 180
         fovy = 54 * np.pi / 180
@@ -135,6 +135,7 @@ class RaysRaspi:
                     break
 
         cv2.destroyAllWindows()
+    @profile 
     def get_ray_points_local_frame(self, theta):
         """
         Return 3D points in the robot's local frame.
@@ -143,11 +144,12 @@ class RaysRaspi:
         with dai.Device(self.pipeline) as device:
             depthQueue = device.getOutputQueue(name="depth", maxSize=4, blocking=False)
 
-            while True:
-                inDepth = depthQueue.get()
-                depthFrame = inDepth.getFrame().astype(np.float32)
-                depthFrame = np.where(depthFrame == 0, 1e4, depthFrame)
-                depthFrame = np.clip(depthFrame, 0, 1e4)
+            inDepth = None 
+            while inDepth is None :
+                inDepth = depthQueue.tryGet()
+            depthFrame = inDepth.getFrame().astype(np.float32)
+            depthFrame = np.where(depthFrame == 0, 1e4, depthFrame)
+            depthFrame = np.clip(depthFrame, 0, 1e4)
         median_depths, pixel_row, cols = self.get_rays(theta, depthFrame)
 
         # Intrinsics
@@ -173,5 +175,5 @@ class RaysRaspi:
             z_robot = -y_cam
 
             points.append(np.array([x_robot, y_robot]))
-
+        
         return np.array(points).T
