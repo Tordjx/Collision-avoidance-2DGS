@@ -212,7 +212,7 @@ class NavigationEnv(gym.Env):
         if distance < self.d_margin : 
             reward = -1
         else : 
-            reward = 2- abs(action).sum()
+            reward = 2- abs(action[0]) - abs(action[1])/np.pi #normalize action for reward 
         """
         w_corr = 10
         w_obs = 1
