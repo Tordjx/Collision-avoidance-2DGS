@@ -60,11 +60,15 @@ for i, entry in tqdm(list(enumerate(logs))):
 
     # Velocity vector widget
     ax_vec = fig.add_subplot(gs[0, 1])
-    ax_vec.quiver(0, 0, *entry['reference_vel'], angles='xy', scale_units='xy', scale=1,
+    entry['reference_vel'][1] *= -1
+    entry['modulated_vel'][1] *= -1
+    entry['correction'][1] *= -1
+
+    ax_vec.quiver(0, 0, *entry['reference_vel'][::-1], angles='xy', scale_units='xy', scale=1,
                   color='blue', label="Reference")
-    ax_vec.quiver(0, 0, *entry['modulated_vel'], angles='xy', scale_units='xy', scale=1,
+    ax_vec.quiver(0, 0, *entry['modulated_vel'][::-1], angles='xy', scale_units='xy', scale=1,
                   color='orange', label="Modulated")
-    ax_vec.quiver(0, 0, *entry['correction'], angles='xy', scale_units='xy', scale=1,
+    ax_vec.quiver(0, 0, *entry['correction'][::-1], angles='xy', scale_units='xy', scale=1,
                   color='green', label="Correction")
     ax_vec.set_xlim(-2, 2)
     ax_vec.set_ylim(-2, 2)
