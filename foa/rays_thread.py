@@ -5,14 +5,14 @@ import threading
 from loop_rate_limiters import RateLimiter
 
 class RaysThread:
-    def __init__(self, fps=10, max_points=30, threshold=0.2, voxel_size=100.0):
+    def __init__(self, fps=10, max_points=30, threshold=-0.3, voxel_size=100.0):
         self.fps = fps
         self.dt = 1.0 / fps
         self.max_points = max_points
         self.threshold = threshold
         self.voxel_size = voxel_size
         self.lock = threading.Lock()
-        self.latest_points = None
+        self.latest_points = np.zeros((0,3))
         self.running = False
         self.pitch = 0.0
 
@@ -50,8 +50,8 @@ class RaysThread:
         config.postProcessing.speckleFilter.speckleRange = 28
         config.postProcessing.temporalFilter.enable = False
         config.postProcessing.spatialFilter.enable = False
-        config.postProcessing.thresholdFilter.minRange = 150
-        config.postProcessing.thresholdFilter.maxRange = 5000
+        config.postProcessing.thresholdFilter.minRange = 50
+        config.postProcessing.thresholdFilter.maxRange = 2000
         config.postProcessing.decimationFilter.decimationFactor = 1
         depth.initialConfig.set(config)
 
@@ -77,20 +77,34 @@ class RaysThread:
     def run(self):
         while self.running:
             inMessage = self.queue.tryGet()
-            if inMessage is not None and "pcl" in inMessage:
-                pclData = inMessage["pcl"]
-                points = pclData.getPoints().astype(np.float64)
+            while inMessage is None :
+                inMessage = self.queue.tryGet()
+            pclData = inMessage["pcl"]
+            points = pclData.getPoints().astype(np.float64)
 
-                if points is not None and len(points) > 0:
-                    transformed = self._transform_to_robot_frame(points, self.pitch)
-                    filtered = transformed[transformed[:, 2] > self.threshold]
-                    downsampled = self._downsample_points(filtered)
-
-                    with self.lock:
-                        self.latest_points = downsampled
-
+            if points is not None and len(points) > 0:
+                
+                transformed = self._transform_to_robot_frame(points, self.pitch)
+                filtered = transformed[transformed[:, 2] > self.threshold]
+                downsampled = self.simple_subsample(filtered)#self._downsample_points(points)
+                with self.lock:
+                    self.latest_points = downsampled
+                """
+                
+                
+                downsampled = self._downsample_points(points)
+                transformed = self._transform_to_robot_frame(points, self.pitch)
+                filtered = transformed[transformed[:, 2] > self.threshold]
+                print(points.shape, downsampled.shape, filtered.shape)
+                with self.lock:
+                    self.latest_points = filtered"""
+            
             self.rate_limiter.sleep()
-
+    def simple_subsample(self, points):
+        points = points[~np.all(points==0, 1)]/1e3
+        if len(points) == 0:
+            return points
+        return points[np.random.choice(points.shape[0], size =30)]
     def set_pitch(self, pitch_rad):
         self.pitch = pitch_rad
 
@@ -117,27 +131,41 @@ class RaysThread:
 
         return points_swapped @ R_y.T
 
-    def _downsample_points(self, pts: np.ndarray, target=20, method='closest'):
+    import numpy as np
+
+    def _downsample_points(self,points, az_bins=20, el_bins=3):
         """
-        pts: Nx3 (x,y,z) where x forward, y left (or adapt to your frame)
-        method: 'closest' or 'highest' or 'centroid'
+        points: Nx3 array in robot/camera frame
+            x forward, y left, z up (adapt if needed)
+        az_bins: number of bins in azimuth (-pi to pi)
+        el_bins: number of bins in elevation (-pi/2 to pi/2)
         """
+        fx, fy= 69 * (np.pi / 180),54 * (np.pi / 180)
+        pts = np.asarray(points, dtype=float)
         if len(pts) == 0:
             return pts
-        angles = np.arctan2(pts[:,1], pts[:,0])  # -pi..pi
-        sectors = np.linspace(-np.pi, np.pi, target+1)
-        out = []
-        for i in range(target):
-            mask = (angles >= sectors[i]) & (angles < sectors[i+1])
-            if not np.any(mask):
+
+        # Compute azimuth (θ) and elevation (φ)
+        az = np.arctan2(pts[:, 1], pts[:, 0])  # -pi..pi
+        el = np.arctan2(pts[:, 2], np.linalg.norm(pts[:, :2], axis=1))  # -pi/2..pi/2
+
+        # Bin edges
+        az_edges = np.linspace(-fx, fx, az_bins + 1)
+        el_edges = np.linspace(-fy, fy, el_bins + 1)
+
+        selected = []
+        for i in range(az_bins):
+            az_mask = (az >= az_edges[i]) & (az < az_edges[i+1])
+            if not np.any(az_mask):
                 continue
-            sel = pts[mask]
-            if method == 'closest':
-                idx = np.argmin(np.linalg.norm(sel[:, :2], axis=1))
-                out.append(sel[idx])
-            elif method == 'highest':
-                idx = np.argmax(sel[:, 2])
-                out.append(sel[idx])
-            elif method == 'centroid':
-                out.append(sel.mean(axis=0))
-        return np.array(out)
+            for j in range(el_bins):
+                mask = az_mask & (el >= el_edges[j]) & (el < el_edges[j+1])
+                if not np.any(mask):
+                    continue
+                cell_pts = pts[mask]
+                # Pick closest point in range
+                idx = np.argmin(np.linalg.norm(cell_pts, axis=1))
+                selected.append(cell_pts[idx])
+
+        out = np.array(selected)/1e3
+        return out[~np.all(out == 0, 1)]

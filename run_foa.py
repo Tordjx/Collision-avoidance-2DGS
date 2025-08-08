@@ -1,6 +1,9 @@
 from upkie.utils.raspi import configure_agent_process, on_raspi
 if on_raspi() : 
     configure_agent_process()
+    reg_freq = True 
+else :
+    reg_freq = False
 from tqdm import tqdm
 from foa.foa import ReactiveAvoidance
 import numpy as np
@@ -37,6 +40,7 @@ def modulate_velocity(reactive_avoidance, i ):
     modulated_velocity = reactive_avoidance.compute(reference_velocity, obstacle_points)
     modulated_velocity[1] *=-1
     correction = modulated_velocity - reference_velocity
+    print(reference_velocity, modulated_velocity)
     return correction
 
 agent_frequency = env_settings.agent_frequency
@@ -45,8 +49,8 @@ max_episode_duration = 25000
 velocity_env = gym.make(
     env_settings.env_id,
     max_episode_steps=int(max_episode_duration * agent_frequency),
-    frequency=agent_frequency,
-    regulate_frequency=False,
+    frequency=100,
+    regulate_frequency=reg_freq,
     shm_name="upkie",
     # max_ground_velocity=env_settings.max_ground_velocity,
     spine_config=env_settings.spine_config,

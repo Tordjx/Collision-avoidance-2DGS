@@ -5,6 +5,12 @@ import numpy as np
 from vartools.states import ObjectPose
 import gymnasium as gym
 
+class MockClusterer :
+    def __init__(self):
+        self.points = None
+    def fit(self,points):
+        self.points = points
+        self.labels_ = np.zeros(points.shape[0])
 class MinimalRobot2D:
     """Simple 2D robot with fixed LIDAR at origin and circular control radius."""
 
@@ -38,7 +44,7 @@ class ReactiveAvoidance:
         self.robot.control_point = [0, 0]
 
         # Avoider instance
-        self.avoider = SampledClusterAvoider(control_radius=self.robot.control_radius)
+        self.avoider = SampledClusterAvoider(control_radius=self.robot.control_radius, clusterer = MockClusterer())#,cluster_params = {"eps": 2 * control_radius, "min_samples": 3, "n_jobs" : -1})
         self.modulated_velocity = np.zeros(2)
     def compute(self, reference_velocity, obstacle_points):
         """Returns modulated velocity given obstacle points and reference velocity.
@@ -50,19 +56,26 @@ class ReactiveAvoidance:
         Returns:
         - modulated_velocity: np.array of shape (2,)
         """
+        if obstacle_points.shape[1] == 3 :
+            obstacle_points = obstacle_points[:,:2]
+        if obstacle_points.shape[0]<=0:
+            print('NO POINTS !!! sending ref vel')
+            return reference_velocity
+        
+        else :
+            
+            self.robot.pose.orientation = 0.0  # Optional: update if orientation is relevant
 
-        self.robot.pose.orientation = 0.0  # Optional: update if orientation is relevant
+            # Update avoider with obstacle points
+            self.avoider.update_laserscan(obstacle_points.T, in_robot_frame=False)
 
-        # Update avoider with obstacle points
-        self.avoider.update_laserscan(obstacle_points, in_robot_frame=False)
-        # Modulate the velocity
-        try :
+            # Modulate the velocity
+
             modulated_velocity = self.avoider.avoid(
                 reference_velocity,
                 self.robot.pose.position
             )
             self.modulated_velocity = modulated_velocity
-        except :
-            modulated_velocity = self.modulated_velocity
-            print("Warning ! something bad happened, sending previous modulated velocity")
-        return modulated_velocity
+
+
+            return modulated_velocity
