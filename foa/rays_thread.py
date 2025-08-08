@@ -86,7 +86,7 @@ class RaysThread:
                 
                 transformed = self._transform_to_robot_frame(points, self.pitch)
                 filtered = transformed[transformed[:, 2] > self.threshold]
-                downsampled = self.simple_subsample(filtered)#self._downsample_points(points)
+                downsampled = self.o3d_filter_downsample(filtered)#self.simple_subsample(filtered)#self._downsample_points(points)
                 with self.lock:
                     self.latest_points = downsampled
                 """
@@ -105,6 +105,14 @@ class RaysThread:
         if len(points) == 0:
             return points
         return points[np.random.choice(points.shape[0], size =30)]
+    def o3d_filter_downsample(self, points, nb_neighbors=20, std_ratio=0.1, output_points= 20):
+        """Remove outliers using statistical outlier removal."""
+        point_cloud = o3d.geometry.PointCloud()
+        point_cloud.points = o3d.utility.Vector3dVector(points)
+        clean_cloud, _ = point_cloud.remove_statistical_outlier(nb_neighbors=nb_neighbors, std_ratio=std_ratio)
+
+        uni_down_pcd = clean_cloud.uniform_down_sample(every_k_points=points.shape[0]//output_points)
+        return np.asarray(uni_down_pcd.points)
     def set_pitch(self, pitch_rad):
         self.pitch = pitch_rad
 
