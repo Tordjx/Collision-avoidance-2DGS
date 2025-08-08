@@ -4,7 +4,7 @@ import open3d as o3d
 import threading
 from loop_rate_limiters import RateLimiter
 
-class ObstaclePointCloud:
+class RaysThread:
     def __init__(self, fps=10, max_points=30, threshold=0.2, voxel_size=100.0):
         self.fps = fps
         self.dt = 1.0 / fps
@@ -117,14 +117,27 @@ class ObstaclePointCloud:
 
         return points_swapped @ R_y.T
 
-    def _downsample_points(self, points: np.ndarray) -> np.ndarray:
-        if points is None or len(points) == 0:
-            return np.empty((0, 3))
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points)
-        pcd_down = pcd.voxel_down_sample(voxel_size=self.voxel_size)
-        downsampled = np.asarray(pcd_down.points)
-        if len(downsampled) > self.max_points:
-            idx = np.random.choice(len(downsampled), self.max_points, replace=False)
-            downsampled = downsampled[idx]
-        return downsampled
+    def _downsample_points(self, pts: np.ndarray, target=20, method='closest'):
+        """
+        pts: Nx3 (x,y,z) where x forward, y left (or adapt to your frame)
+        method: 'closest' or 'highest' or 'centroid'
+        """
+        if len(pts) == 0:
+            return pts
+        angles = np.arctan2(pts[:,1], pts[:,0])  # -pi..pi
+        sectors = np.linspace(-np.pi, np.pi, target+1)
+        out = []
+        for i in range(target):
+            mask = (angles >= sectors[i]) & (angles < sectors[i+1])
+            if not np.any(mask):
+                continue
+            sel = pts[mask]
+            if method == 'closest':
+                idx = np.argmin(np.linalg.norm(sel[:, :2], axis=1))
+                out.append(sel[idx])
+            elif method == 'highest':
+                idx = np.argmax(sel[:, 2])
+                out.append(sel[idx])
+            elif method == 'centroid':
+                out.append(sel.mean(axis=0))
+        return np.array(out)
