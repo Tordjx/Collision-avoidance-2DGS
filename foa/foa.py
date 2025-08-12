@@ -1,6 +1,6 @@
 import numpy as np
 from vartools.states import ObjectPose
-from fast_obstacle_avoidance.obstacle_avoider import SampledClusterAvoider
+from fast_obstacle_avoidance.obstacle_avoider import SampledClusterAvoider, FastObstacleAvoider
 import numpy as np
 from vartools.states import ObjectPose
 import gymnasium as gym
@@ -9,8 +9,10 @@ class MockClusterer :
     def __init__(self):
         self.points = None
     def fit(self,points):
+        
         self.points = points
         self.labels_ = np.zeros(points.shape[0])
+        
 class MinimalRobot2D:
     """Simple 2D robot with fixed LIDAR at origin and circular control radius."""
 
@@ -35,7 +37,6 @@ class MinimalRobot2D:
     def transform_to_robot(self, points):
         """Transform points from world to robot frame."""
         return self.rotation_matrix.T @ (points.T - self.pose.position[:, None])
-
 class ReactiveAvoidance:
     def __init__(self, control_radius):
         # Setup robot model
@@ -46,6 +47,7 @@ class ReactiveAvoidance:
         # Avoider instance
         self.avoider = SampledClusterAvoider(control_radius=self.robot.control_radius, clusterer = MockClusterer())#,cluster_params = {"eps": 2 * control_radius, "min_samples": 3, "n_jobs" : -1})
         self.modulated_velocity = np.zeros(2)
+
     def compute(self, reference_velocity, obstacle_points):
         """Returns modulated velocity given obstacle points and reference velocity.
         
@@ -56,26 +58,27 @@ class ReactiveAvoidance:
         Returns:
         - modulated_velocity: np.array of shape (2,)
         """
-        if obstacle_points.shape[1] == 3 :
-            obstacle_points = obstacle_points[:,:2]
         if obstacle_points.shape[0]<=0:
             print('NO POINTS !!! sending ref vel')
             return reference_velocity
+        if obstacle_points.shape[1] == 3 :
+            obstacle_points = obstacle_points[:,:2]
         
-        else :
-            
-            self.robot.pose.orientation = 0.0  # Optional: update if orientation is relevant
+        self.robot.pose.orientation = 0.0  # Optional: update if orientation is relevant
 
-            # Update avoider with obstacle points
-            self.avoider.update_laserscan(obstacle_points.T, in_robot_frame=False)
+        # Update avoider with obstacle points
+        self.avoider.update_laserscan(obstacle_points.T, in_robot_frame=False)
 
-            # Modulate the velocity
-
+        # Modulate the velocity
+        try : 
             modulated_velocity = self.avoider.avoid(
                 reference_velocity,
                 self.robot.pose.position
             )
             self.modulated_velocity = modulated_velocity
+        except : 
+            print("error, something happened ")
+            return reference_velocity
 
 
-            return modulated_velocity
+        return modulated_velocity

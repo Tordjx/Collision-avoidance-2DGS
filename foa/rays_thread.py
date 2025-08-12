@@ -4,6 +4,7 @@ import open3d as o3d
 import threading
 from loop_rate_limiters import RateLimiter
 
+
 class RaysThread:
     def __init__(self, fps=10, max_points=30, threshold=-0.3, voxel_size=100.0):
         self.fps = fps
@@ -44,6 +45,8 @@ class RaysThread:
         depth.setLeftRightCheck(True)
         depth.setExtendedDisparity(False)
         depth.setSubpixel(True)
+        depth.setConfidenceThreshold(100)  
+        #Disparities with confidence value under this threshold are accepted. Higher confidence threshold means disparities with less confidence are accepted too
 
         config = depth.initialConfig.get()
         config.postProcessing.speckleFilter.enable = True
@@ -54,7 +57,7 @@ class RaysThread:
         config.postProcessing.thresholdFilter.maxRange = 2000
         config.postProcessing.decimationFilter.decimationFactor = 1
         depth.initialConfig.set(config)
-
+        
         monoLeft.out.link(depth.left)
         monoRight.out.link(depth.right)
         depth.depth.link(pointcloud.inputDepth)
@@ -80,13 +83,20 @@ class RaysThread:
             while inMessage is None :
                 inMessage = self.queue.tryGet()
             pclData = inMessage["pcl"]
-            points = pclData.getPoints().astype(np.float64)
-
+            points = pclData.getPoints().astype(np.float32)
+    
             if points is not None and len(points) > 0:
-                
+                mask = (points[:, 0] != 0) | (points[:, 1] != 0) | (points[:, 2] != 0)
+                points = points[mask]/1e3
+
+                #print(points.shape)
                 transformed = self._transform_to_robot_frame(points, self.pitch)
+                #print(transformed.shape)
                 filtered = transformed[transformed[:, 2] > self.threshold]
-                downsampled = self.o3d_filter_downsample(filtered)#self.simple_subsample(filtered)#self._downsample_points(points)
+                #print(filtered.shape)
+                downsampled = self.representative_points(filtered)#self.simple_subsample(filtered)#self._downsample_points(points)
+                #print(downsampled.shape)
+                print(downsampled)
                 with self.lock:
                     self.latest_points = downsampled
                 """
@@ -105,13 +115,39 @@ class RaysThread:
         if len(points) == 0:
             return points
         return points[np.random.choice(points.shape[0], size =30)]
-    def o3d_filter_downsample(self, points, nb_neighbors=20, std_ratio=0.1, output_points= 20):
+    
+    def representative_points(self,points, num_points=20):
+        # Compute yaw angles and distances
+        fovx = 69 * np.pi / 180
+        angles = np.arctan2(points[:, 1], points[:, 0])  # -pi to pi
+        distances = np.linalg.norm(points[:, :2], axis=1)
+
+        # Define bins
+        bins = np.linspace(-fovx,fovx, num_points + 1)
+
+        chosen_points = []
+        for i in range(num_points):
+            mask = (angles >= bins[i]) & (angles < bins[i+1])
+            if np.any(mask):
+                idx = np.argmin(distances[mask])  # closest point in bin
+                chosen_points.append(points[mask][idx])
+                #chosen_points.append(np.mean(points[mask], 0))
+        return np.array(chosen_points)
+
+    def o3d_filter_downsample(self, points, nb_neighbors=20, std_ratio=0.1, output_points= 20, first_downsample = 7000):
         """Remove outliers using statistical outlier removal."""
         point_cloud = o3d.geometry.PointCloud()
         point_cloud.points = o3d.utility.Vector3dVector(points)
-        clean_cloud, _ = point_cloud.remove_statistical_outlier(nb_neighbors=nb_neighbors, std_ratio=std_ratio)
+        if len(point_cloud.points)//first_downsample ==0 or len(point_cloud.points) <= 3000 :
+            point_cloud = point_cloud
+        else :
+            point_cloud = point_cloud.uniform_down_sample(every_k_points=len(point_cloud.points)//first_downsample)
+        clean_cloud, _ = point_cloud.remove_radius_outlier(nb_points=16, radius=0.05)#point_cloud.remove_statistical_outlier(nb_neighbors=nb_neighbors, std_ratio=std_ratio)
+        if len(clean_cloud.points)//output_points ==0 :
+            uni_down_pcd = clean_cloud
+        else :
+            uni_down_pcd = clean_cloud.uniform_down_sample(every_k_points=len(clean_cloud.points)//output_points)
 
-        uni_down_pcd = clean_cloud.uniform_down_sample(every_k_points=points.shape[0]//output_points)
         return np.asarray(uni_down_pcd.points)
     def set_pitch(self, pitch_rad):
         self.pitch = pitch_rad

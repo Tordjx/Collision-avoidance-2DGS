@@ -1,14 +1,14 @@
 from upkie.utils.raspi import configure_agent_process, on_raspi
 if on_raspi() : 
     configure_agent_process()
-    reg_freq = True 
+    reg_freq = False
 else :
     reg_freq = False
 from tqdm import tqdm
 from foa.foa import ReactiveAvoidance
 import numpy as np
 from foa.envs import make_rays_pink_env
-
+from loop_rate_limiters import RateLimiter
 import gymnasium as gym
 import numpy as np
 import torch
@@ -31,7 +31,7 @@ gym.envs.registration.register(
 )
 
 
-reactive_avoidance = ReactiveAvoidance(control_radius=0.15)
+reactive_avoidance = ReactiveAvoidance(control_radius=0.20)
 def modulate_velocity(reactive_avoidance, i ):
     target_forward = -i["spine_observation"]["joystick"]["left_axis"][1]
     target_yaw = -i["spine_observation"]["joystick"]["left_axis"][0]
@@ -40,7 +40,7 @@ def modulate_velocity(reactive_avoidance, i ):
     modulated_velocity = reactive_avoidance.compute(reference_velocity, obstacle_points)
     modulated_velocity[1] *=-1
     correction = modulated_velocity - reference_velocity
-    print(reference_velocity, modulated_velocity)
+    #print(reference_velocity, modulated_velocity)
     return correction
 
 agent_frequency = env_settings.agent_frequency
@@ -58,16 +58,21 @@ velocity_env = gym.make(
     # no_imu = env_settings.no_imu,
     init_state = RobotState(position_base_in_world = np.array([2,2,0.58]))
 )
+
 env = make_rays_pink_env(
     velocity_env,
     env_settings,
     eval_mode=False,
 )
-s,i = env.reset()
-for _ in tqdm(range(200000)):
-    action = modulate_velocity(reactive_avoidance, i)
-    s,r,d,t,i = env.step(action)
-    if i["spine_observation"]["joystick"]["triangle_button"]:
-        obs, i = env.reset()
-    if d:
-        obs, i = env.reset()
+def main() :
+
+    rate_limiter = RateLimiter(frequency=10)
+    s,i = env.reset()
+    for _ in tqdm(range(200000)):
+        rate_limiter.sleep()
+        action = modulate_velocity(reactive_avoidance, i)
+        s,r,d,t,i = env.step(action)
+        if i["spine_observation"]["joystick"]["triangle_button"] or d:
+            obs, i = env.reset()
+
+main()

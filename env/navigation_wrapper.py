@@ -2,8 +2,6 @@ import gin
 import gymnasium as gym
 import numpy as np
 from pink_balancer import WholeBodyController
-
-
 class NavigationWrapper(gym.Wrapper):
     """
     This wrapper makes it so that the action space is the two joystick axis,
@@ -31,7 +29,7 @@ class NavigationWrapper(gym.Wrapper):
         self.observation = i
         s = self.get_obs(i)
         return s, i
-
+    
     def step(self, a):
         for i in range(10):
             # print(a)

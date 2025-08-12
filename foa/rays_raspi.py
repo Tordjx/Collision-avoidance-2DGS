@@ -1,7 +1,6 @@
 import gymnasium as gym
 from foa.rays_thread import RaysThread
 
-
 class RaysRaspiWrapper(gym.Wrapper):
     def __init__(self, env, image_every=10):
         super().__init__(env)

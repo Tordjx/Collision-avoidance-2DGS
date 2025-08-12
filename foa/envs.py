@@ -28,6 +28,7 @@ def make_rays_pink_env(
         )
 
     else:
+        print('Using rays raspi')
         from foa.rays_raspi import RaysRaspiWrapper
         rescaled_accel_env = RaysRaspiWrapper(
             velocity_env,

@@ -1,11 +1,14 @@
 from upkie.utils.raspi import configure_agent_process, on_raspi
 if on_raspi() : 
     configure_agent_process()
+    reg_freq = False
+else :
+    reg_freq = False
 import gymnasium as gym
 import numpy as np
 import torch
 import upkie.envs
-
+from loop_rate_limiters import RateLimiter
 upkie.envs.register()
 import gin
 
@@ -30,8 +33,8 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         velocity_env = gym.make(
             env_settings.env_id,
             max_episode_steps=int(max_episode_duration * agent_frequency),
-            frequency=agent_frequency,
-            regulate_frequency=False,
+            frequency=100,
+            regulate_frequency=reg_freq,
             shm_name="upkie",
             # max_ground_velocity=env_settings.max_ground_velocity,
             spine_config=env_settings.spine_config,
@@ -54,7 +57,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 device = torch.device("cuda")
 
 # env setup
-
+rate_limiter = RateLimiter(frequency=10)
 
 envs = make_env(env_settings.env_id, 0, 0, 0, "")()
 from sb3_contrib import CrossQ
@@ -65,6 +68,7 @@ obs, infos = envs.reset()
 smooth_action = 0
 alpha= 0
 for i in tqdm(range(200000)):
+    rate_limiter.sleep()
     if infos['spine_observation']['joystick']['left_axis'][1] >= 0:
         action = np.zeros(2)
     else: 
