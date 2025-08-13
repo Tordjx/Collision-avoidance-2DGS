@@ -35,10 +35,10 @@ class NavigationWrapper(gym.Wrapper):
             # print(a)
             self.observation["spine_observation"]["joystick"]["left_axis"][1] = np.clip(
                 -a[0] + self.joystick[1], -1, 1
-            )
+            ) 
             self.observation["spine_observation"]["joystick"]["left_axis"][1] += 0.19 #joystick hack
             self.observation["spine_observation"]["joystick"]["right_axis"][0] = (
-                np.clip(a[1] + self.joystick[0], -1, 1)
+                np.clip(a[1] + self.joystick[0], -2, 2)
             )
             action = self.controller.cycle(
                 self.observation["spine_observation"], self.dt
