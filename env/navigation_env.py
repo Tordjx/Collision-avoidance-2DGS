@@ -55,7 +55,7 @@ class NavigationEnv(gym.Env):
         self.eval = eval
         self.action_space = gym.spaces.Box(low=np.array([-1,-2]), high=np.array([0,2]), shape=(2,), dtype=np.float32)
         self.observation_space = gym.spaces.Box(
-            low=-10, high=10, shape=(2 + 2 + 32,), dtype=np.float32
+            low=-10, high=10, shape=(2 + 2 +  2+32,), dtype=np.float32
         )
         self.position = np.zeros(3)  # SE(2): (x, y, theta)
         self.velocity = np.zeros(2)  # (linear velocity, yaw velocity)
@@ -162,6 +162,7 @@ class NavigationEnv(gym.Env):
         self.d_margin = 0.1
 
     def step(self, action):
+        self.action = action
         x, y, theta = self.position
         self.position_history.append([x, y, theta, self.total_timesteps])
         self.total_timesteps += 1
@@ -213,10 +214,11 @@ class NavigationEnv(gym.Env):
     def get_obs(self):
         features = np.concatenate(np.array(self.features_memory), -1).flatten()
 
-        observation = np.concatenate([self.velocity, self.joystick, features])
+        observation = np.concatenate([self.velocity, self.joystick, self.action, features])
         return observation.astype(np.float32)
 
-    def reset(self, seed=None):
+    def reset(self, seed=None): 
+        self.action = self.action_space.sample()
         super().reset(seed=seed)
         self.robot_height = np.random.uniform(0.4, 0.6)
         self.tilt = 0

@@ -1,10 +1,10 @@
 import argparse
 import os
 
-from sb3_contrib import CrossQ
+from stable_baselines3 import DQN
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.env_checker import check_env
-from env.navigation_env import NavigationEnv
+from env.navigation_env_discrete import NavigationEnv
 
 
 class SaveModelCallback(BaseCallback):
@@ -14,7 +14,7 @@ class SaveModelCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         if self.n_calls % self.save_freq == 0:
-            save_file = "CrossQ_navigation.zip"
+            save_file = "DQN_navigation.zip"
             self.model.save(save_file)
         return True  # Continue training
 
@@ -45,12 +45,12 @@ if __name__ == "__main__":
         eval_env, eval_freq=args.eval_every, deterministic=True
     )
 
-    if args.resume and os.path.exists("CrossQ_navigation.zip"):
+    if args.resume and os.path.exists("DQN_navigation.zip"):
         print("Resuming training from saved model...")
-        model = CrossQ.load("CrossQ_navigation", env=env)
+        model = DQN.load("DQN_navigation", env=env)
     else:
         print("Starting fresh training...")
-        model = CrossQ(
+        model = DQN(
             "MlpPolicy",
             env,
             batch_size=512,
@@ -63,4 +63,4 @@ if __name__ == "__main__":
         callback=[save_callback, eval_callback],
         progress_bar=True,
     )
-    model.save("CrossQ_navigation")
+    model.save("DQN_navigation")

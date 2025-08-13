@@ -249,7 +249,7 @@ class NavigationEnv(gym.Env):
         return observation.astype(np.float32)
 
     def reset(self, seed=None):
-        self.action = self.env.action_space.sample()
+        self.action = self.action_space.sample()
         super().reset(seed=seed)
         self.robot_height = np.random.uniform(0.4, 0.6)
         self.tilt = 0
