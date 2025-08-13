@@ -72,7 +72,7 @@ class RaysSim:
         self.height = 128
 
         # Ray shooting params
-        self.N = 100  # Number of rays horizontally
+        self.N = 20  # Number of rays horizontally
         self.radius = 2  # Patch half-size for median filtering
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -205,4 +205,4 @@ class RaysSim:
 
             points.append(np.array([x_robot, y_robot])) #2d points
 
-        return np.array(points).T
+        return np.array(points)

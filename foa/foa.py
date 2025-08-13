@@ -45,7 +45,8 @@ class ReactiveAvoidance:
         self.robot.control_point = [0, 0]
 
         # Avoider instance
-        self.avoider = SampledClusterAvoider(control_radius=self.robot.control_radius, clusterer = MockClusterer())#,cluster_params = {"eps": 2 * control_radius, "min_samples": 3, "n_jobs" : -1})
+        delta = 69 * (np.pi / 180)/20 
+        self.avoider = SampledClusterAvoider(control_radius=self.robot.control_radius,weight_factor = 5*delta, clusterer = MockClusterer())#,cluster_params = {"eps": 2 * control_radius, "min_samples": 3, "n_jobs" : -1})
         self.modulated_velocity = np.zeros(2)
 
     def compute(self, reference_velocity, obstacle_points):
