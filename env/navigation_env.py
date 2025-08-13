@@ -158,7 +158,7 @@ class NavigationEnv(gym.Env):
         # Position history
         self.total_timesteps = 0
         self.position_history = []
-        self.d_interaction = 0.75
+        self.d_interaction = 0.4
         self.d_margin = 0.1
 
     def step(self, action):
@@ -173,13 +173,16 @@ class NavigationEnv(gym.Env):
         self.tilt = np.clip(self.tilt, -np.pi / 4, np.pi / 4)
         # Note: velocity is in SE(2), position is (x, y, theta)-
         action[1] *= -1
-        corrected = np.clip(np.array([j_x, j_y]) + action, -1, 1)
+        corrected = np.array([j_x, j_y])+action
+        corrected = np.clip(corrected[0], -1, 1), np.clip(corrected[1], -2, 2)
         self.velocity = (
             np.clip(
                 corrected, self.velocity - self.dt * 1.2, self.velocity + self.dt * 1.2
             )
-            + 0.05 * np.random.randn()
+            
         )
+        if not self.eval :
+            self.velocity = self.velocity +  0.05 * np.random.randn()
         self.velocity[0] = np.clip(self.velocity[0], -1.5, 1.5)
         self.velocity[1] = np.clip(self.velocity[1], -1, 1)  # angular velocity !
         se2 = pin.liegroups.SE2()
@@ -204,7 +207,11 @@ class NavigationEnv(gym.Env):
         if distance < self.d_margin : 
             reward = -1
         else : 
-            reward = 3- abs(action[0]) - abs(action[1])/5 #normalize action for reward 
+            if distance < self.d_interaction :
+                margin_reward = -(self.d_interaction - distance)/(self.d_interaction - self.d_margin)
+            else : 
+                margin_reward = 0
+            reward = 2- abs(action[0]) - abs(action[1])/5 + margin_reward #normalize action for reward 
         if np.random.binomial(1, 1 / (10 / self.dt)):
             self.joystick = self.sample_joystick()
         observation = self.get_obs()
@@ -259,7 +266,10 @@ class NavigationEnv(gym.Env):
         if self.eval:
             return np.array([0, -1])
         else:
-            return np.array([np.random.uniform(-1,1), np.random.uniform(0,-1)])
+            if np.random.uniform() < 0.5 :
+                return np.array([0 , -1])
+            else: 
+                return np.array([np.random.uniform(-1,1), np.random.uniform(0,-1)])
 
     def query_image(self):
         posx, posy, theta = self.position
