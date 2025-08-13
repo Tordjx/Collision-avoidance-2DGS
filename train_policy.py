@@ -4,7 +4,7 @@ import os
 from sb3_contrib import CrossQ
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.env_checker import check_env
-
+from upkie.envs.wrappers import AddActionToObservation
 from env.navigation_env import NavigationEnv
 
 
@@ -39,6 +39,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     env = NavigationEnv(window=False)
     eval_env = NavigationEnv(window=False, eval=True)
+    env = AddActionToObservation(env)
+    eval_env = AddActionToObservation(eval_env)
 
     check_env(env, warn=True)
     save_callback = SaveModelCallback(save_freq=args.save_every)

@@ -53,9 +53,9 @@ class NavigationEnv(gym.Env):
     ):
         super(NavigationEnv, self).__init__()
         self.eval = eval
-        self.action_space = gym.spaces.Box(low=np.array([-1,-2]), high=np.array([0,2]), shape=(2,), dtype=np.float32)
+        self.action_space = gym.spaces.Discrete(3*5)#gym.spaces.Box(low=np.array([-1,-2]), high=np.array([0,2]), shape=(2,), dtype=np.float32)
         self.observation_space = gym.spaces.Box(
-            low=-10, high=10, shape=(2 + 2 + 32,), dtype=np.float32
+            low=-10, high=10, shape=(2 + 3*5 + 3*5 + 32,), dtype=np.float32
         )
         self.position = np.zeros(3)  # SE(2): (x, y, theta)
         self.velocity = np.zeros(2)  # (linear velocity, yaw velocity)
@@ -160,27 +160,53 @@ class NavigationEnv(gym.Env):
         self.position_history = []
         self.d_interaction = 0.75
         self.d_margin = 0.1
+    def continuous_to_discrete(self, velocity):
+        forward_vel = velocity[0]
+        angular_vel = velocity[1]
+
+        # Define bins
+        forward_bins = np.array([0.0, 0.5, 1.0])
+        angular_bins = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
+
+        # Find nearest bin for each
+        forward_idx = np.argmin(np.abs(forward_bins - forward_vel))
+        angular_idx = np.argmin(np.abs(angular_bins - angular_vel))
+
+        # Map to single discrete action index (row-major)
+        discrete_action = forward_idx * len(angular_bins) + angular_idx
+
+        return discrete_action
+    
+    def discrete_to_continuous(self, velocity):
+        # Bins as defined in continuous_to_discrete
+        forward_bins = np.array([0.0, 0.5, 1.0])
+        angular_bins = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
+
+        # Decode the single action_id into forward/ang indexes
+        forward_idx = velocity // len(angular_bins)
+        angular_idx = velocity % len(angular_bins)
+
+        # Return the bin values (continuous approximation)
+        return np.array([forward_bins[forward_idx], angular_bins[angular_idx]])
 
     def step(self, action):
+        self.action = action
         x, y, theta = self.position
         self.position_history.append([x, y, theta, self.total_timesteps])
         self.total_timesteps += 1
         if self.total_timesteps % 10000 == 0 and not self.eval:
             np.save("position_history.npy", np.array(self.position_history))
-        j_y, j_x = -self.joystick
+        j_x, j_y = self.discrete_to_continuous(self.joystick)
         self.tilt += 0.02 * np.random.randn()
         self.tilt = np.clip(self.tilt, -np.pi / 4, np.pi / 4)
-        # Note: velocity is in SE(2), position is (x, y, theta)-
-        action[1] *= -1
-        corrected = np.clip(np.array([j_x, j_y]) + action, -1, 1)
+        # Note: velocity is in SE(2), position is (x, y, theta)
+        corrected = self.discrete_to_continuous(action)
         self.velocity = (
             np.clip(
                 corrected, self.velocity - self.dt * 1.2, self.velocity + self.dt * 1.2
             )
             + 0.05 * np.random.randn()
         )
-        self.velocity[0] = np.clip(self.velocity[0], -1.5, 1.5)
-        self.velocity[1] = np.clip(self.velocity[1], -1, 1)  # angular velocity !
         se2 = pin.liegroups.SE2()
         pose = np.array([self.position[0],self.position[1], np.cos(self.position[2]), np.sin(self.position[2])])
         twist = np.array([self.velocity[0], 0 , self.velocity[1]])
@@ -188,6 +214,7 @@ class NavigationEnv(gym.Env):
         self.position[0] = new_pose[0]
         self.position[1] = new_pose[1]
         self.position[2] = np.arctan2(new_pose[3], new_pose[2])
+
         image = self.query_image()
         with torch.no_grad():
             image = (
@@ -203,20 +230,26 @@ class NavigationEnv(gym.Env):
         if distance < self.d_margin : 
             reward = -1
         else : 
-            reward = 3- abs(action[0]) - abs(action[1])/5 #normalize action for reward 
+            reward = 2 - (action != self.joystick)
         if np.random.binomial(1, 1 / (10 / self.dt)):
             self.joystick = self.sample_joystick()
         observation = self.get_obs()
         info = {}
         return observation, float(reward), bool(done), bool(trunc), info
-
+    def one_hot(self,indices, num_classes= 3*5):
+        # indices: array of integer class IDs (shape: [N])
+        # num_classes: total number of discrete actions/classes
+        one_hot_matrix = np.zeros((len(indices), num_classes), dtype=np.float32)
+        one_hot_matrix[np.arange(len(indices)), indices] = 1.0
+        return one_hot_matrix
     def get_obs(self):
         features = np.concatenate(np.array(self.features_memory), -1).flatten()
 
-        observation = np.concatenate([self.velocity, self.joystick, features])
+        observation = np.concatenate([self.velocity, self.one_hot(self.joystick), self.one_hot(self.action) , features])
         return observation.astype(np.float32)
 
     def reset(self, seed=None):
+        self.action = self.env.action_space.sample()
         super().reset(seed=seed)
         self.robot_height = np.random.uniform(0.4, 0.6)
         self.tilt = 0
@@ -255,9 +288,10 @@ class NavigationEnv(gym.Env):
 
     def sample_joystick(self):
         if self.eval:
-            return np.array([0, -1])
+            joystick  = np.array([0, -1])
         else:
-            return np.array([np.random.uniform(-1,1), np.random.uniform(0,-1)])
+            joystick =  np.array([np.random.uniform(-1,1), np.random.uniform(0,-1)])
+        return self.continuous_to_discrete(joystick)
 
     def query_image(self):
         posx, posy, theta = self.position
