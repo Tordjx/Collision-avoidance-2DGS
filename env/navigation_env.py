@@ -53,7 +53,7 @@ class NavigationEnv(gym.Env):
     ):
         super(NavigationEnv, self).__init__()
         self.eval = eval
-        self.action_space = gym.spaces.Box(low=-2, high=2, shape=(2,), dtype=np.float32)
+        self.action_space = gym.spaces.Box(low=np.array([-1,-2]), high=np.array([0,2]), shape=(2,), dtype=np.float32)
         self.observation_space = gym.spaces.Box(
             low=-10, high=10, shape=(2 + 2 + 32,), dtype=np.float32
         )
@@ -212,7 +212,7 @@ class NavigationEnv(gym.Env):
         if distance < self.d_margin : 
             reward = -1
         else : 
-            reward = 2- abs(action[0]) - abs(action[1])/np.pi #normalize action for reward 
+            reward = 3- abs(action[0]) - abs(action[1])/5 #normalize action for reward 
         """
         w_corr = 10
         w_obs = 1
