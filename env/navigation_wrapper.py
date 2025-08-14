@@ -13,8 +13,8 @@ class NavigationWrapper(gym.Wrapper):
 
     def __init__(self, env):
         super(NavigationWrapper, self).__init__(env)
-        self.action_space = gym.spaces.Box(low=-2, high=2, shape=(2,))
-        self.observation_space = gym.spaces.Box(low=-10, high=10, shape=(4,))
+        self.action_space = gym.spaces.Box(low=np.array([-1,-2]), high=np.array([0,2]), shape=(2,))
+        self.observation_space = gym.spaces.Box(low=-10, high=10, shape=(6,))
         self.dt = 1 / 100
         # Pink balancer
         gin.parse_config_file("config/pink_config.gin")
@@ -24,6 +24,7 @@ class NavigationWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         s, i = self.env.reset(**kwargs)
+        self.action = np.zeros(2)
         self.joystick = i["spine_observation"]["joystick"]["left_axis"]
         self.timestep = 0
         self.observation = i
@@ -31,6 +32,7 @@ class NavigationWrapper(gym.Wrapper):
         return s, i
     
     def step(self, a):
+        self.action = a
         for i in range(10):
             # print(a)
             self.observation["spine_observation"]["joystick"]["left_axis"][1] = np.clip(
@@ -64,6 +66,6 @@ class NavigationWrapper(gym.Wrapper):
         joystick = self.joystick
         yaw_velocity = np.clip(yaw_velocity, -1, 1)
         forward_velocity = np.clip(forward_velocity, -1.5, 1.5)
-        obs = np.array([forward_velocity, yaw_velocity, joystick[0], joystick[1]])
+        obs = np.array([forward_velocity, yaw_velocity, joystick[0], joystick[1],self.action[0],self.action[1]])
 
         return obs
