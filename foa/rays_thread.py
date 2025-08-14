@@ -43,16 +43,16 @@ class RaysThread:
         depth.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
         depth.initialConfig.setMedianFilter(dai.MedianFilter.KERNEL_7x7)
         depth.setLeftRightCheck(True)
-        depth.setExtendedDisparity(False)
+        depth.setExtendedDisparity(True)
         depth.setSubpixel(True)
-        depth.setConfidenceThreshold(100)  
+        depth.setConfidenceThreshold(50)  
         #Disparities with confidence value under this threshold are accepted. Higher confidence threshold means disparities with less confidence are accepted too
 
         config = depth.initialConfig.get()
         config.postProcessing.speckleFilter.enable = True
         config.postProcessing.speckleFilter.speckleRange = 28
-        config.postProcessing.temporalFilter.enable = False
-        config.postProcessing.spatialFilter.enable = False
+        config.postProcessing.temporalFilter.enable = True
+        config.postProcessing.spatialFilter.enable = True
         config.postProcessing.thresholdFilter.minRange = 50
         config.postProcessing.thresholdFilter.maxRange = 2000
         config.postProcessing.decimationFilter.decimationFactor = 1
