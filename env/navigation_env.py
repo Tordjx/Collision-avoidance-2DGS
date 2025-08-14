@@ -211,7 +211,7 @@ class NavigationEnv(gym.Env):
                 margin_reward = -(self.d_interaction - distance)/(self.d_interaction - self.d_margin)
             else : 
                 margin_reward = 0
-            reward = 2- abs(action[0]) - abs(action[1])/5 + margin_reward #normalize action for reward 
+            reward = 2- 5*(abs(action[0]) - abs(action[1])) + margin_reward #normalize action for reward 
         if np.random.binomial(1, 1 / (10 / self.dt)):
             self.joystick = self.sample_joystick()
         observation = self.get_obs()
@@ -266,7 +266,7 @@ class NavigationEnv(gym.Env):
         if self.eval:
             return np.array([0, -1])
         else:
-            if np.random.uniform() < 0.5 :
+            if np.random.uniform() < 0.1 :
                 return np.array([0 , -1])
             else: 
                 return np.array([np.random.uniform(-1,1), np.random.uniform(0,-1)])

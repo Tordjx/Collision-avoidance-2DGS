@@ -39,16 +39,16 @@ def make_vision_pink_env(
             image_every=env_settings.image_every,
             eval_mode=eval_mode,
         )
+        from env.features_stacker import FeaturesStackerWrapper
 
+        rescaled_accel_env = FeaturesStackerWrapper(
+            rescaled_accel_env, env_settings=env_settings
+        )
     else:
         from env.raspi_vision import RaspiImageWrapper
 
         rescaled_accel_env = RaspiImageWrapper(
             velocity_env, image_every=env_settings.image_every
         )
-    #from env.features_stacker import FeaturesStackerWrapper
 
-    #rescaled_accel_env = FeaturesStackerWrapper(
-    #    rescaled_accel_env, env_settings=env_settings
-    #)
     return rescaled_accel_env
