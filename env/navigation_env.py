@@ -322,8 +322,10 @@ class NavigationEnv(gym.Env):
             window_image = cv2.cvtColor(window_image, cv2.COLOR_RGB2BGR)
 
             # Depth to uint8 colormap
+            m, M = np.log(0.2), np.log(5)
             def normalize_and_colorize(d):
-                d_norm = (d - np.min(d)) / (np.max(d) - np.min(d) + 1e-8)
+                d = np.clip(d, m,M)
+                d_norm = (d - m) / (M - m + 1e-8)
                 d_uint8 = (255 * d_norm).astype(np.uint8)
                 return cv2.applyColorMap(d_uint8, cv2.COLORMAP_INFERNO)
 
@@ -334,6 +336,7 @@ class NavigationEnv(gym.Env):
             with torch.no_grad():
                 depth_recons = self.encoder(torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0).to(device))
                 depth_recons = depth_recons.squeeze().cpu().numpy()
+                #print(min(depth_recons, np.max(depth_recons)))
             depth_recons_colored = normalize_and_colorize(depth_recons)
 
             # Resize all to same height
