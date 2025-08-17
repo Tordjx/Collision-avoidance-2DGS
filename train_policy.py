@@ -5,6 +5,7 @@ from sb3_contrib import CrossQ
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.env_checker import check_env
 from env.navigation_env import NavigationEnv
+from typing import Callable
 
 
 class SaveModelCallback(BaseCallback):
@@ -18,6 +19,24 @@ class SaveModelCallback(BaseCallback):
             self.model.save(save_file)
         return True  # Continue training
 
+def linear_schedule(initial_value: float) -> Callable[[float], float]:
+    """
+    Linear learning rate schedule.
+
+    :param initial_value: Initial learning rate.
+    :return: schedule that computes
+      current learning rate depending on remaining progress
+    """
+    def func(progress_remaining: float) -> float:
+        """
+        Progress will decrease from 1 (beginning) to 0.
+
+        :param progress_remaining:
+        :return: current learning rate
+        """
+        return progress_remaining * initial_value
+
+    return func
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -33,7 +52,7 @@ if __name__ == "__main__":
         "--eval_every", type=int, default=10000, help="Evaluate model every n steps"
     )
     parser.add_argument(
-        "--training_steps", type=int, default=1000000, help="Number of training steps"
+        "--training_steps", type=int, default=10000000, help="Number of training steps"
     )
     args = parser.parse_args()
     env = NavigationEnv(window=False)
@@ -55,7 +74,7 @@ if __name__ == "__main__":
             env,
             batch_size=512,
             verbose=1,
-            tensorboard_log="./CrossQ_nav_tensorboard/",
+            tensorboard_log="./CrossQ_nav_tensorboard/",learning_rate=linear_schedule(1e-3)
         )
 
     model.learn(
