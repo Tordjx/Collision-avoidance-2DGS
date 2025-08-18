@@ -11,7 +11,7 @@ class MockClusterer :
     def fit(self,points):
         
         self.points = points
-        self.labels_ = np.zeros(points.shape[0])#np.array([i for i in range(points.shape[0])])
+        self.labels_ = np.array([i for i in range(points.shape[0])])
         
 class MinimalRobot2D:
     """Simple 2D robot with fixed LIDAR at origin and circular control radius."""
@@ -46,7 +46,7 @@ class ReactiveAvoidance:
 
         # Avoider instance
         delta = 69 * (np.pi / 180)/20 
-        self.avoider = SampledClusterAvoider(control_radius=self.robot.control_radius,weight_factor = 1*delta, clusterer = MockClusterer())#,cluster_params = {"eps": 2 * control_radius, "min_samples": 3, "n_jobs" : -1})
+        self.avoider = SampledClusterAvoider(control_radius=self.robot.control_radius,weight_factor = 5*delta, clusterer = MockClusterer(),weight_power= 1)#,cluster_params = {"eps": 2 * control_radius, "min_samples": 3, "n_jobs" : -1})
         self.modulated_velocity = np.zeros(2)
 
     def compute(self, reference_velocity, obstacle_points):

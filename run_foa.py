@@ -30,7 +30,7 @@ gym.envs.registration.register(
     id="UpkieServos-v5", entry_point="env.upkie_servos:UpkieServos"
 )
 
-reactive_avoidance = ReactiveAvoidance(control_radius=0.3)
+reactive_avoidance = ReactiveAvoidance(control_radius=0.2)
 
 def modulate_velocity(reactive_avoidance, i):
     target_forward = -i["spine_observation"]["joystick"]["left_axis"][1]
@@ -39,7 +39,7 @@ def modulate_velocity(reactive_avoidance, i):
     obstacle_points = i["obstacle_points"]
     modulated_velocity = reactive_avoidance.compute(reference_velocity, obstacle_points)
     modulated_velocity[1] *= -1
-    modulated_velocity = np.linalg.inv(np.diag([1, 0.15])) @ modulated_velocity  # upkie's lever arm
+    modulated_velocity = np.linalg.inv(np.diag([1, 0.10])) @ modulated_velocity  # upkie's lever arm
     correction = modulated_velocity - reference_velocity
     print(modulated_velocity)
     return correction
