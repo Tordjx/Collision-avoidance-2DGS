@@ -11,7 +11,7 @@ class MockClusterer :
     def fit(self,points):
         
         self.points = points
-        self.labels_ = np.array([i for i in range(points.shape[0])])
+        self.labels_ = np.zeros(points.shape[0])#np.array([i for i in range(points.shape[0])])
         
 class MinimalRobot2D:
     """Simple 2D robot with fixed LIDAR at origin and circular control radius."""

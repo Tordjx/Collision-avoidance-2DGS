@@ -6,7 +6,7 @@ from loop_rate_limiters import RateLimiter
 
 
 class RaysThread:
-    def __init__(self, fps=10, max_points=30, threshold=-0.3, voxel_size=100.0):
+    def __init__(self, fps=10, max_points=30, threshold=-0.2, voxel_size=100.0):
         self.fps = fps
         self.dt = 1.0 / fps
         self.max_points = max_points
@@ -45,7 +45,7 @@ class RaysThread:
         depth.setLeftRightCheck(True)
         depth.setExtendedDisparity(True)
         depth.setSubpixel(True)
-        depth.setConfidenceThreshold(50)  
+        depth.setConfidenceThreshold(20)  
         #Disparities with confidence value under this threshold are accepted. Higher confidence threshold means disparities with less confidence are accepted too
 
         config = depth.initialConfig.get()
@@ -54,7 +54,7 @@ class RaysThread:
         config.postProcessing.temporalFilter.enable = False
         config.postProcessing.spatialFilter.enable = False
         config.postProcessing.thresholdFilter.minRange = 50
-        config.postProcessing.thresholdFilter.maxRange = 2000
+        config.postProcessing.thresholdFilter.maxRange = 20000
         config.postProcessing.decimationFilter.decimationFactor = 1
         depth.initialConfig.set(config)
         
@@ -86,7 +86,7 @@ class RaysThread:
             points = pclData.getPoints().astype(np.float32)
     
             if points is not None and len(points) > 0:
-                mask = (points[:, 0] != 0) | (points[:, 1] != 0) | (points[:, 2] != 0)
+                mask = ((points[:, 0] != 0) | (points[:, 1] != 0) | (points[:, 2] != 0)) & ((points**2).sum(1) <= (2e3)**2)
                 points = points[mask]/1e3
 
                 #print(points.shape)
@@ -95,8 +95,9 @@ class RaysThread:
                 filtered = transformed[transformed[:, 2] > self.threshold]
                 #print(filtered.shape)
                 downsampled = self.representative_points(filtered)#self.simple_subsample(filtered)#self._downsample_points(points)
-                #print(downsampled.shape)
-                print(downsampled)
+                print(downsampled.shape)
+                if len(downsampled.shape) ==2:
+                    downsampled[:,1] *= 1
                 with self.lock:
                     self.latest_points = downsampled
                 """
@@ -116,22 +117,24 @@ class RaysThread:
             return points
         return points[np.random.choice(points.shape[0], size =30)]
     
-    def representative_points(self,points, num_points=20):
-        # Compute yaw angles and distances
-        fovx = 69 * np.pi / 180
+    def representative_points(self, points, num_points=20, quantile=0.05):
         angles = np.arctan2(points[:, 1], points[:, 0])  # -pi to pi
         distances = np.linalg.norm(points[:, :2], axis=1)
-
-        # Define bins
-        bins = np.linspace(-fovx,fovx, num_points + 1)
-
+        if len(angles)==0:
+            return np.array([])
+        bins = np.linspace(angles.min(), angles.max(), num_points + 1)
         chosen_points = []
+
         for i in range(num_points):
             mask = (angles >= bins[i]) & (angles < bins[i+1])
             if np.any(mask):
-                idx = np.argmin(distances[mask])  # closest point in bin
-                chosen_points.append(points[mask][idx])
-                #chosen_points.append(np.mean(points[mask], 0))
+                dists = distances[mask]
+                pts = points[mask]
+
+                # take quantile on distances
+                idx = np.argsort(dists)[int(quantile * (len(dists)-1))]
+                chosen_points.append(pts[idx])
+
         return np.array(chosen_points)
 
     def o3d_filter_downsample(self, points, nb_neighbors=20, std_ratio=0.1, output_points= 20, first_downsample = 7000):

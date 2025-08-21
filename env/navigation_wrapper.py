@@ -34,11 +34,12 @@ class NavigationWrapper(gym.Wrapper):
     def step(self, a):
         self.action = a
         for i in range(10):
+            
             # print(a)
             self.observation["spine_observation"]["joystick"]["left_axis"][1] = np.clip(
                 -a[0] + self.joystick[1], -1, 1
             ) 
-            self.observation["spine_observation"]["joystick"]["left_axis"][1] += 0.19 #joystick hack
+            self.observation["spine_observation"]["joystick"]["left_axis"][1] += 0.20 #joystick hack
             self.observation["spine_observation"]["joystick"]["right_axis"][0] = (
                 np.clip(a[1] + self.joystick[0], -2, 2)
             )
@@ -46,12 +47,17 @@ class NavigationWrapper(gym.Wrapper):
                 self.observation["spine_observation"], self.dt
             )["servo"]
             s, r, d, t, observation = self.env.step(action)
-            self.joystick = observation["spine_observation"]["joystick"]["left_axis"]
             self.observation = observation
+            if self.observation['spine_observation']['joystick']['square_button'] :
+                self.joystick = np.array([0,-1])
+                self.observation["spine_observation"]["joystick"]["left_axis"] = self.joystick
+            else :
+                self.joystick = observation["spine_observation"]["joystick"]["left_axis"]
+            
             if d or t:
                 break
         s = self.get_obs(observation)
-        return s, r, d, t, observation
+        return s, r, d, t, self.observation
 
     def get_obs(self, info):
         # velocity, joystick

@@ -9,10 +9,10 @@ from config.settings import EnvSettings
 
 config = EnvSettings()
 import gymnasium as gym
-from env.camera_thread import CameraThread
+from foa.monocular_thread import MonocularThread
 
 
-def create_pipeline(blob_path = "encoder.blob"):
+def create_pipeline(blob_path = "autoencoder.blob"):
     # Create the pipeline
     pipeline = dai.Pipeline()
 
@@ -51,33 +51,27 @@ def create_pipeline(blob_path = "encoder.blob"):
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class RaspiImageWrapper(Wrapper):
+class MonocularWrapper(Wrapper):
     def __init__(self, env, image_every=10):
         super().__init__(env=env)
         self.device = create_pipeline()
-        n = 32 
-        low = np.concatenate([env.observation_space.low, -10 * np.ones(n)])
-        self.observation_space = gym.spaces.Box(
-            low=low,
-            high=np.concatenate([env.observation_space.high, 10 * np.ones(n)]),
-            shape=low.shape,
-            dtype=env.observation_space.dtype,
-        )
-        self.camera_thread = CameraThread(
-            camera=self.device, fps=10
-        )
+        
+        self.camera_thread = MonocularThread(camera = self.device, fps=10 )
         self.camera_thread.start()
 
     def step(self, action):
         s, r, d, t, i = self.env.step(action)
-        self.features = self.camera_thread.get_latest()
-        i["features"] = self.features
-        s = np.concatenate([s, self.features])
+        pitch = i["spine_observation"]["base_orientation"]["pitch"]
+        self.camera_thread.set_pitch(pitch)
+        self.obstacle_points = self.camera_thread.get_latest()
+        print(self.obstacle_points)
+        i["obstacle_points"] = self.obstacle_points
         return s, r, d, t, i
 
     def reset(self, **kwargs):
         s, i = self.env.reset(**kwargs)
-        self.features = self.camera_thread.get_latest()
-        i["features"] = self.features
-        s = np.concatenate([s,self.features])
+        pitch = i["spine_observation"]["base_orientation"]["pitch"]
+        self.camera_thread.set_pitch(pitch)
+        self.obstacle_points = self.camera_thread.get_latest()
+        i["obstacle_points"] = self.obstacle_points
         return s, i

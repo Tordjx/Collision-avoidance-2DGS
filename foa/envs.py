@@ -12,7 +12,7 @@ from upkie.utils.raspi import on_raspi
 from config.settings import EnvSettings
 from env.navigation_wrapper import NavigationWrapper
 
-
+mode = "encoder"
 def make_rays_pink_env(
     velocity_env: UpkieGroundVelocity,
     env_settings: EnvSettings,
@@ -29,9 +29,15 @@ def make_rays_pink_env(
 
     else:
         print('Using rays raspi')
-        from foa.rays_raspi import RaysRaspiWrapper
-        rescaled_accel_env = RaysRaspiWrapper(
-            velocity_env,
-            image_every=env_settings.image_every
-        )
+        if mode =="stereo":
+            from foa.rays_raspi import RaysRaspiWrapper
+            rescaled_accel_env = RaysRaspiWrapper(
+                velocity_env,
+                image_every=env_settings.image_every
+            )
+        elif mode =="encoder":
+            from foa.monocular_raspi import MonocularWrapper
+            rescaled_accel_env = MonocularWrapper(velocity_env)
+        else :
+            raise Exception('Supported modes are stereo or encoder')
     return rescaled_accel_env

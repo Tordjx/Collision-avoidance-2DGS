@@ -264,7 +264,6 @@ class UpkieServos(UpkieBaseEnv):
         self.__neutral_action = neutral_action
         self.__max_action = max_action
         self.__min_action = min_action
-
     def get_neutral_action(self) -> dict:
         r"""!
         Get the neutral action where servos don't move.

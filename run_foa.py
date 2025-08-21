@@ -30,7 +30,30 @@ gym.envs.registration.register(
     id="UpkieServos-v5", entry_point="env.upkie_servos:UpkieServos"
 )
 
-reactive_avoidance = ReactiveAvoidance(control_radius=0.2)
+reactive_avoidance = ReactiveAvoidance(control_radius=0.3)
+import logging
+import time
+import os
+def setup_logger(method_name):
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    filename = os.path.join("logs", f"{method_name}_{timestamp}.log")
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # Remove any old handlers
+    logger.handlers.clear()
+
+    # File handler
+    fh = logging.FileHandler(filename, mode="w")
+    fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(fh)
+
+    # Console handler
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(ch)
+
+    return filename
 
 def modulate_velocity(reactive_avoidance, i):
     target_forward = -i["spine_observation"]["joystick"]["left_axis"][1]
@@ -38,7 +61,7 @@ def modulate_velocity(reactive_avoidance, i):
     reference_velocity = np.array([target_forward, target_yaw])
     obstacle_points = i["obstacle_points"]
     modulated_velocity = reactive_avoidance.compute(reference_velocity, obstacle_points)
-    modulated_velocity[1] *= -1
+    #modulated_velocity[1] *= -1
     modulated_velocity = np.linalg.inv(np.diag([1, 0.10])) @ modulated_velocity  # upkie's lever arm
     correction = modulated_velocity - reference_velocity
     print(modulated_velocity)
@@ -65,6 +88,8 @@ env = make_rays_pink_env(
 )
 
 def main():
+    log_file = setup_logger("foa")
+    logging.info(f"Starting run, logging to {log_file}")
     # ZeroMQ publisher setup
     context = zmq.Context()
     socket = context.socket(zmq.PUB)
@@ -81,10 +106,19 @@ def main():
         socket.send_pyobj(obstacle_points)  # Publish numpy array (pickled)
 
         action = modulate_velocity(reactive_avoidance, i)
-        s, r, d, t, i = env.step(action)
         
+        s, r, d, t, i = env.step(action)
         if i["spine_observation"]["joystick"]["triangle_button"] or d:
             obs, i = env.reset()
+        joystick_input = i["spine_observation"]["joystick"]['left_axis']
+        forward_velocity = i["spine_observation"]["wheel_odometry"]["velocity"]
+        yaw_velocity = i["spine_observation"]["base_orientation"][
+            "angular_velocity"
+        ][2]
+        logging.info(
+            f"Action={action}, Joystick={joystick_input}, rdot={forward_velocity}, phidot={yaw_velocity} "
+            f"ObstaclePoints={obstacle_points}"
+        )
 
 if __name__ == "__main__":
     main()

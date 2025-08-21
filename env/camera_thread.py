@@ -9,28 +9,36 @@ from config.settings import EnvSettings
 
 config = EnvSettings()
 
+from autoencoder import AutoEncoder
+model =  AutoEncoder(input_shape=(3, 128,128), z_size=32)
+model.load_state_dict(torch.load('autoencoder.pth', map_location = torch.device('cpu')))
+def get_features(device):
+    q_nn = device.getOutputQueue(name="nn", maxSize=1, blocking=False)
+    q_img = device.getOutputQueue(name="rgb", maxSize=1, blocking=False)
+    in_rgb = None 
+    while in_rgb is None : 
+        in_rgb = q_img.tryGet()
+    in_nn = None
+    while in_nn is None:
+        in_nn = q_nn.tryGet()
+    with torch.no_grad():
+        return model.encode(torch.from_numpy(in_rgb.getCvFrame()[..., ::-1].copy()).moveaxis(-1,0).unsqueeze(0).float()/(255)).squeeze(0)
+    """
+    print(model.encode(torch.from_numpy(in_rgb.getCvFrame()[..., ::-1].copy()).moveaxis(-1,0).unsqueeze(0).float()/(255)))
+    features = np.array(in_nn.getFirstLayerFp16())  # or getLayerFp16("layer_name")
+    print(features)
+    return torch.from_numpy(features.astype(np.float32))"""
 
-def get_image(device):
-    q_rgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
-    in_rgb = None
-    while in_rgb is None:
-        # Get RGB frames
-        in_rgb = q_rgb.tryGet()
-        # If we have a new RGB frame, process it
-        if in_rgb is not None:
-            frame = in_rgb.getCvFrame() / 255
-    return torch.from_numpy(frame.astype(np.float32)).moveaxis(-1, 0)
 
 
 class CameraThread:
-    def __init__(self, camera, encoder, fps=10):
+    def __init__(self, camera, fps=10):
         """
         camera: your camera interface object, e.g. with .get_image()
         encoder: your encoder object or function
         fps: desired frame rate
         """
         self.camera = camera
-        self.encoder = encoder
         self.fps = fps
         self.dt = 1.0 / fps
         self.rate_limiter = RateLimiter(frequency = fps)
@@ -50,12 +58,7 @@ class CameraThread:
     def run(self):
         while self.running:
             # Get image from camera
-            img = get_image(self.camera)
-            
-            
-            # Encode image
-            with torch.no_grad():
-                encoded = self.encoder.encode(img).squeeze(0).numpy()
+            encoded = get_features(self.camera)
 
             # Store safely
             with self.lock:

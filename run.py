@@ -24,6 +24,30 @@ gym.envs.registration.register(
     id="UpkieServos-v5", entry_point="env.upkie_servos:UpkieServos"
 )
 
+import logging
+import time
+import os
+def setup_logger(method_name):
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    filename = os.path.join("logs", f"{method_name}_{timestamp}.log")
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # Remove any old handlers
+    logger.handlers.clear()
+
+    # File handler
+    fh = logging.FileHandler(filename, mode="w")
+    fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(fh)
+
+    # Console handler
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(ch)
+
+    return filename
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
@@ -62,11 +86,12 @@ rate_limiter = RateLimiter(frequency=10)
 envs = make_env(env_settings.env_id, 0, 0, 0, "")()
 from sb3_contrib import CrossQ
 from tqdm import tqdm
-
+log_file = setup_logger("rl")
+logging.info(f"Starting run, logging to {log_file}")
 model = CrossQ.load("CrossQ_navigation", env=envs)
 obs, infos = envs.reset()
 smooth_action = 0
-alpha= 0
+alpha= 0.5
 for i in tqdm(range(200000)):
     rate_limiter.sleep()
     if infos['spine_observation']['joystick']['left_axis'][1] >= 0:
@@ -80,3 +105,12 @@ for i in tqdm(range(200000)):
     if d:
         smooth_action = 0
         obs, infos = envs.reset()
+    joystick_input = infos["spine_observation"]["joystick"]['left_axis']
+
+    forward_velocity = infos["spine_observation"]["wheel_odometry"]["velocity"]
+    yaw_velocity = infos["spine_observation"]["base_orientation"][
+        "angular_velocity"
+    ][2]
+    logging.info(
+        f"Action={action}, Joystick={joystick_input}, rdot={forward_velocity}, phidot={yaw_velocity} "
+    )
