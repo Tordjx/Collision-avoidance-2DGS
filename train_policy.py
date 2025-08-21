@@ -74,6 +74,7 @@ if __name__ == "__main__":
             env,
             batch_size=512,
             verbose=1,
+            gamma = 0.9,
             tensorboard_log="./CrossQ_nav_tensorboard/",learning_rate=linear_schedule(1e-3)
         )
 
