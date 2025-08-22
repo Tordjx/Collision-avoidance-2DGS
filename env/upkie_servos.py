@@ -323,3 +323,8 @@ class UpkieServos(UpkieBaseEnv):
 
     def get_reward(self, s, a):
         return 1
+    def step(self, action):
+        s,r,d,t,i = self.super().step(action)
+        if i['spine_observation']['joystick']['square_button'] :
+            i["spine_observation"]["joystick"]["left_axis"] = np.array([0,-1])
+        return s,r,d,t,i

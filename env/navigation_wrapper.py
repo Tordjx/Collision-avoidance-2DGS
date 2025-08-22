@@ -48,11 +48,7 @@ class NavigationWrapper(gym.Wrapper):
             )["servo"]
             s, r, d, t, observation = self.env.step(action)
             self.observation = observation
-            if self.observation['spine_observation']['joystick']['square_button'] :
-                self.joystick = np.array([0,-1])
-                self.observation["spine_observation"]["joystick"]["left_axis"] = self.joystick
-            else :
-                self.joystick = observation["spine_observation"]["joystick"]["left_axis"]
+            self.joystick = observation["spine_observation"]["joystick"]["left_axis"]
             
             if d or t:
                 break
