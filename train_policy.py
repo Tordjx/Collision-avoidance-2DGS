@@ -52,7 +52,7 @@ if __name__ == "__main__":
         "--eval_every", type=int, default=10000, help="Evaluate model every n steps"
     )
     parser.add_argument(
-        "--training_steps", type=int, default=10000000, help="Number of training steps"
+        "--training_steps", type=int, default=200000, help="Number of training steps"
     )
     args = parser.parse_args()
     env = NavigationEnv(window=False)
@@ -74,7 +74,7 @@ if __name__ == "__main__":
             env,
             batch_size=512,
             verbose=1,
-            gamma = 0.9,
+            gamma = 0.95,
             tensorboard_log="./CrossQ_nav_tensorboard/",learning_rate=linear_schedule(1e-3)
         )
 
