@@ -4,7 +4,7 @@ from sb3_contrib import CrossQ
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from env.navigation_env import NavigationEnv
 from typing import Callable
-
+import torch
 
 class SaveModelCallback(BaseCallback):
     def __init__(self, save_freq, save_path, verbose=1):
@@ -31,14 +31,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
     import numpy as np
 
-    np.random.seed(42)  # for reproducibility
     seeds = np.random.randint(0, 1_000_000, size=10)
 
     for seed in seeds:
+        seed = int(seed)
         print(f"\n=== Training with seed {seed} ===")
-
-        env = NavigationEnv(window=False, seed=seed)
-        eval_env = NavigationEnv(window=False, eval=True, seed=seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        env = NavigationEnv(window=False)
+        eval_env = NavigationEnv(window=False, eval=True)
 
         save_file = f"CrossQ_navigation_seed{seed}.zip"
         save_callback = SaveModelCallback(save_freq=args.save_every, save_path=save_file)
