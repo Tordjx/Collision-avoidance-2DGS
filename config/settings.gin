@@ -14,6 +14,7 @@ EnvSettings.spine_config = {
         },
     }
 }
+
 EnvSettings.max_episode_duration =20
 EnvSettings.spine_frequency = 1000
 EnvSettings.window = True

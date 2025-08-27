@@ -11,7 +11,7 @@ import upkie.envs
 from loop_rate_limiters import RateLimiter
 upkie.envs.register()
 import gin
-
+from env.robot_state_randomization import RobotStateRandomization
 gin.parse_config_file(f"config/settings.gin")
 from config.settings import EnvSettings
 
@@ -63,7 +63,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
             # max_ground_velocity=env_settings.max_ground_velocity,
             spine_config=env_settings.spine_config,
             fall_pitch=np.pi / 2,
-            init_state = RobotState(position_base_in_world = np.array([2,2,0.6]))
+            init_state = RobotState(randomization = RobotStateRandomization()),
             # no_imu = env_settings.no_imu
         )
         env = make_vision_pink_env(

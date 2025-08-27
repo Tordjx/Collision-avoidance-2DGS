@@ -4,8 +4,11 @@ parser = argparse.ArgumentParser(description="Process dataset parameters.")
 parser.add_argument(
     "--len_dataset", type=int, help="Number of samples in the dataset", default=60000
 )
+parser.add_argument('--test_set', type=int , help="if set, make a test set of this length", default = 0)
 
 args = parser.parse_args()
+if args.test_set > 0:
+    args.len_dataset = args.test_set
 import torch
 from tqdm import tqdm
 
@@ -24,5 +27,9 @@ for i in tqdm(range(args.len_dataset)):
 
 images_tensor = torch.stack(images)
 depths_tensor = torch.stack(depths)
-torch.save(images_tensor, "images.pt")
-torch.save(depths_tensor, "depths.pt")
+if args.test_set>0: 
+    torch.save(images_tensor, "images_test.pt")
+    torch.save(depths_tensor, "depths_test.pt")
+else :
+    torch.save(images_tensor, "images.pt")
+    torch.save(depths_tensor, "depths.pt")
