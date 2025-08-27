@@ -1,56 +1,53 @@
 import argparse
-
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from autoencoder import AutoEncoder
+from tqdm import tqdm
+
+
+def evaluate(autoencoder, images, depths, device, name="dataset"):
+    dataset = torch.utils.data.TensorDataset(images, depths)
+    dataloader = torch.utils.data.DataLoader(
+        dataset, batch_size=2048, shuffle=False, num_workers=20
+    )
+
+    all_errors = []
+    for x, y in tqdm(dataloader, desc=f"Evaluating {name}"):
+        with torch.no_grad():
+            y_hat = autoencoder(x.to(device))
+            # reduction='none' → keep per-sample loss
+            error = F.mse_loss(
+                y_hat, torch.log(torch.clamp(y.to(device), 1e-2, 10)), reduction="none"
+            )
+            # flatten per-pixel errors, then mean per sample
+            sample_errors = error.view(error.size(0), -1).mean(dim=1).cpu().numpy()
+            all_errors.append(sample_errors)
+
+    all_errors = np.concatenate(all_errors)
+    mean = all_errors.mean()
+    std = all_errors.std()
+    return mean, std
+
+
 if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-    images = torch.load("images_test.pt")
-    depths = torch.load("depths_test.pt")
-
-    dataset = torch.utils.data.TensorDataset(images, depths)  # <-- Corrected
-
-    # Initialize AutoEncoder
+    # Load model
     autoencoder = AutoEncoder((3, 128, 128), 32)
     autoencoder.load_state_dict(torch.load("autoencoder.pth"))
-    autoencoder.eval()
+    autoencoder.eval().to(device)
 
-    # Move model to GPU if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # Create DataLoader
-    dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=2048, shuffle=True, num_workers=20
-    )
-    autoencoder.to(device)
-    from tqdm import tqdm
-    errors = 0
-    for x, y in dataloader: 
-        y_hat = autoencoder(x.to(device))
-        error = F.mse_loss(y_hat, torch.log(torch.clamp(y.to(device),1e-2,10)), reduction='none')
-        errors += error.sum().item()
-    print(errors / len(dataset))
+    # Test set
+    images_test = torch.load("images_test.pt")
+    depths_test = torch.load("depths_test.pt")
+    mean_test, std_test = evaluate(autoencoder, images_test, depths_test, device, name="test")
 
-    images = torch.load("images.pt")
-    depths = torch.load("depths.pt")
+    # Train set
+    images_train = torch.load("images.pt")
+    depths_train = torch.load("depths.pt")
+    mean_train, std_train = evaluate(autoencoder, images_train, depths_train, device, name="train")
 
-    dataset = torch.utils.data.TensorDataset(images, depths)  # <-- Corrected
-    
-    # Move model to GPU if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # Create DataLoader
-    dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=2048, shuffle=True, num_workers=20
-    )
-    autoencoder.to(device)
-    from tqdm import tqdm
-    errors = 0
-    for x, y in dataloader: 
-        y_hat = autoencoder(x.to(device))
-        error = F.mse_loss(y_hat, torch.log(torch.clamp(y.to(device),1e-2,10)), reduction='none')
-        errors += error.sum().item()
-    print(errors / len(dataset))
-
+    print(f"Test set:  mean={mean_test:.6f}, std={std_test:.6f}")
+    print(f"Train set: mean={mean_train:.6f}, std={std_train:.6f}")
