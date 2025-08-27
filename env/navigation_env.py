@@ -219,7 +219,7 @@ class NavigationEnv(gym.Env):
         if np.random.binomial(1, 1 / (10 / self.dt)):
             self.joystick = self.sample_joystick()
         observation = self.get_obs()
-        info = {}
+        info = {"position": self.position.copy()}
         return observation, float(reward), bool(done), bool(trunc), info
 
     def get_obs(self):
@@ -228,7 +228,7 @@ class NavigationEnv(gym.Env):
         observation = np.concatenate([self.velocity, self.joystick, self.action, features])
         return observation.astype(np.float32)
 
-    def reset(self, seed=None): 
+    def reset(self, seed=None, **kwargs): 
         self.action = self.action_space.sample()
         super().reset(seed=seed)
         self.robot_height = np.random.uniform(0.4, 0.6)
@@ -249,7 +249,7 @@ class NavigationEnv(gym.Env):
                 )
                 self.features_memory.append(self.encoder.encode(image).cpu().numpy())
         observation = self.get_obs()
-        return observation, {}
+        return observation, {"position": self.position.copy()}
 
     def sample_position(self):
         if np.random.choice([0, 1]):

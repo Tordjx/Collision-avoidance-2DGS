@@ -166,13 +166,13 @@ with open(csv_file, "w", newline="") as f:
         steps = 0
 
         while not (done or truncated):
-            action, _ = np.zeros(2)
+            action = np.zeros(2)
             obs, reward, done, truncated, info = env.step(action)
             steps += 1
 
         # log to CSV
         writer.writerow(["", ep + 1, steps])
-        logger.info(f"{""} | Episode {ep+1} length: {steps}")
+        logger.info(f"no_policy | Episode {ep+1} length: {steps}")
 
     env.close()
 

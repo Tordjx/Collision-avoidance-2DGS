@@ -38,7 +38,6 @@ def parse_experiment(filepath, method="rl"):
                 phidot.append(float(match_phidot.group(1)))
 
                 if method == "foa":
-                    # handle multi-line ObstaclePoints
                     if "ObstaclePoints=[[" in line:
                         obs_lines = [line.split("ObstaclePoints=[[")[-1]]
                         while "]]" not in obs_lines[-1]:
@@ -52,9 +51,6 @@ def parse_experiment(filepath, method="rl"):
                         obstacles.append(np.array(pts_list))
                     else:
                         obstacles.append(np.empty((0,2)))
-
-                    
-
     return np.array(actions), np.array(joystick), np.array(rdot), np.array(phidot), obstacles
 
 def split_by_joystick(actions, joysticks, rdot, phidot, obstacles, target=[0.001, -1.0], tol=1e-6):
@@ -82,11 +78,13 @@ def split_by_joystick(actions, joysticks, rdot, phidot, obstacles, target=[0.001
             "phidot": phidot[start_idx:],
             "obstacles": obstacles[start_idx:]
         })
-    return [s for s in segments if len(s['actions']) > 20]
+    return segments#[s for s in segments if len(s['actions']) > 20]
 
 def integrate_segment(segment, dt=0.1):
     x, y, phi = 0, 0, 0
-    X, Y, commanded_vels, modulated_vels, obstacle_world = [], [], [], [], []
+    X, Y, commanded_vels, modulated_vels = [], [], [], []
+    obstacle_world, accumulated_obstacles = [], []  # NEW: cumulative obstacles
+
     actions, joysticks, rdots, phidots, obstacles = segment['actions'], segment['joysticks'], segment['rdot'], segment['phidot'], segment['obstacles']
 
     for i in range(len(rdots)):
@@ -99,36 +97,42 @@ def integrate_segment(segment, dt=0.1):
         modulated_vels.append(modulated_vel)
 
         # transform obstacle points to world frame
-        if obstacles[i].size > 0:
+        if  len(obstacles)>0  and obstacles[i].size > 0:
             c, s = np.cos(phi), np.sin(phi)
             R = np.array([[c, -s],[s, c]])
             obs_world = (R @ obstacles[i].T).T + np.array([x,y])
         else:
             obs_world = np.empty((0,2))
+
         obstacle_world.append(obs_world)
+
+        # accumulate all obstacles
+        if i == 0:
+            accumulated_obstacles.append(obs_world)
+        else:
+            if obs_world.size > 0:
+                accumulated_obstacles.append(np.vstack([accumulated_obstacles[-1], obs_world]))
+            else:
+                accumulated_obstacles.append(accumulated_obstacles[-1])
 
         x, y, phi = integrate(x, y, phi, rdots[i], phidots[i])
 
-    return np.array(X), np.array(Y), np.array(commanded_vels), np.array(modulated_vels), obstacle_world
+    return np.array(X), np.array(Y), np.array(commanded_vels), np.array(modulated_vels), obstacle_world, accumulated_obstacles
 
 def create_experiment_video(segments, video_path, dt=0.1, method="rl"):
     fig, (ax_traj, ax_vel) = plt.subplots(1, 2, figsize=(12,6))
     integrated_segments, segment_limits = [], []
 
     for seg in segments:
-        X, Y, commanded, modulated, obstacles_world = integrate_segment(seg, dt)
-        integrated_segments.append((X, Y, commanded, modulated, obstacles_world))
+        X, Y, commanded, modulated, obstacles_world, accumulated_obstacles = integrate_segment(seg, dt)
+        integrated_segments.append((X, Y, commanded, modulated, obstacles_world, accumulated_obstacles))
 
-        # include obstacles in limits
-        all_x = np.concatenate([X] + [obs[:,0] for obs in obstacles_world if obs.size>0])
-        all_y = np.concatenate([Y] + [obs[:,1] for obs in obstacles_world if obs.size>0])
-        xlim = (all_x.min()-0.1, all_x.max()+0.1)
-        ylim = (all_y.min()-0.1, all_y.max()+0.1)
-        segment_limits.append((xlim, ylim))
-
+        all_x = np.concatenate([X] + [obs[:,0] for obs in accumulated_obstacles if len(obs)>0])
+        all_y = np.concatenate([Y] + [obs[:,1] for obs in accumulated_obstacles if len(obs)>0])
+        segment_limits.append((all_x.min()-0.1, all_x.max()+0.1, all_y.min()-0.1, all_y.max()+0.1))
 
     segment_start_frames = [0]
-    for X, _, _, _, _ in integrated_segments:
+    for X, *_ in integrated_segments:
         segment_start_frames.append(segment_start_frames[-1] + len(X))
     total_frames = segment_start_frames[-1]
 
@@ -136,22 +140,23 @@ def create_experiment_video(segments, video_path, dt=0.1, method="rl"):
         seg_idx = max(i for i,start in enumerate(segment_start_frames) if frame >= start)
         local_frame = frame - segment_start_frames[seg_idx]
 
-        X, Y, commanded, modulated, obstacles_world = integrated_segments[seg_idx]
-        xlim, ylim = segment_limits[seg_idx]
+        X, Y, commanded, modulated, obstacles_world, accumulated_obstacles = integrated_segments[seg_idx]
+        xlim, xmax, ylim, ymax = segment_limits[seg_idx]
 
         ax_traj.clear()
-        ax_traj.set_xlim(xlim)
-        ax_traj.set_ylim(ylim)
+        ax_traj.set_xlim(xlim, xmax)
+        ax_traj.set_ylim(ylim, ymax)
         ax_traj.set_xlabel("X")
         ax_traj.set_ylabel("Y")
         ax_traj.grid(True)
         ax_traj.plot(X[:local_frame], Y[:local_frame], color='black', alpha=0.7)
 
-        if method=="foa" and len(obstacles_world[local_frame])>0:
-            ax_traj.scatter(obstacles_world[local_frame][:,0], obstacles_world[local_frame][:,1],
-                            color='orange', s=30, alpha=0.7, label="Obstacle Points")
+        # plot accumulated obstacles with fading
+        if method=="foa" and len(accumulated_obstacles[local_frame])>0:
+            obs = accumulated_obstacles[local_frame]
+            alpha_vals = np.linspace(0.1, 0.8, len(obs))
+            ax_traj.scatter(obs[:,0], obs[:,1], color='orange', s=30, alpha=alpha_vals)
 
-        # velocity quadrant
         ax_vel.clear()
         ax_vel.set_xlim(-2.0, 2.0)
         ax_vel.set_ylim(-2.0, 2.0)
@@ -172,7 +177,7 @@ def create_experiment_video(segments, video_path, dt=0.1, method="rl"):
     plt.close(fig)
 
 # --- main loop ---
-folders = [f for f in os.listdir(log_folder) if "CAM" not in f and "output" not in f]
+folders = [f for f in os.listdir(log_folder) if "CAM" not in f and "output" not in f and "resultat" not in f]
 for folder in folders:
     files = os.listdir(os.path.join(log_folder, folder))
     for file in files:
