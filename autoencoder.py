@@ -77,7 +77,7 @@ class AutoEncoder(nn.Module):
         x = x.view(x.size(0), *self.shape_before_flatten)
         x_recon = self.decoder(x)
         return x_recon
-
+    
 
 if __name__ == "__main__":
 

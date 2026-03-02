@@ -55,7 +55,7 @@ class NavigationEnv(gym.Env):
         self.eval = eval
         self.action_space = gym.spaces.Box(low=np.array([-1,-2]), high=np.array([0,2]), shape=(2,), dtype=np.float32)
         self.observation_space = gym.spaces.Box(
-            low=-10, high=10, shape=(2 + 2 +  2+32,), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(2 + 2 +  2+32,), dtype=np.float32
         )
         self.position = np.zeros(3)  # SE(2): (x, y, theta)
         self.velocity = np.zeros(2)  # (linear velocity, yaw velocity)
